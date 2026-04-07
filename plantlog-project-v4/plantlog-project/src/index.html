@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="PlantLog">
 <link rel="manifest" id="pwa-manifest">
-<title>PlantLog v3</title>
+<title>PlantLog</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&family=DM+Mono:wght@400;500&family=Be+Vietnam+Pro:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
@@ -784,6 +784,30 @@ html,body{height:100%;font-family:var(--font);background:#f0f2f0;color:var(--g90
     <select class="fsel" id="task-trip"><option value="">None</option></select>
   </div>
 
+  <!-- TASK SUB-CHECKLIST -->
+  <div class="form-section">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+      <div class="form-section-title" style="margin-bottom:0;">Sub-checklist (optional)</div>
+      <button onclick="toggleTaskChecklist()" id="task-cl-toggle" style="font-size:11px;color:var(--green);background:none;border:none;cursor:pointer;font-weight:600;">＋ Add items</button>
+    </div>
+    <div id="task-cl-body" style="display:none;">
+      <!-- Template quick-add -->
+      <div style="margin-bottom:8px;">
+        <div style="font-size:11px;color:var(--g500);margin-bottom:5px;">From templates:</div>
+        <div id="task-cl-templates" style="display:flex;gap:5px;flex-wrap:wrap;"></div>
+      </div>
+      <!-- Current sub-checklist items -->
+      <div id="task-cl-items"></div>
+      <!-- Manual add -->
+      <div style="display:flex;gap:6px;margin-top:6px;">
+        <input class="fi" id="task-cl-input" placeholder="Add checklist item…" style="flex:1;font-size:13px;padding:8px 10px;">
+        <button onclick="addTaskCheckItem()" style="background:var(--green);color:#fff;border:none;border-radius:var(--rs);padding:8px 12px;cursor:pointer;font-size:14px;font-weight:600;">+</button>
+      </div>
+    </div>
+    <!-- Collapsed summary -->
+    <div id="task-cl-summary" style="font-size:12px;color:var(--g500);"></div>
+  </div>
+
   <div class="brow">
     <button class="btn btn-o" onclick="closeModal('modal-new-task')">Cancel</button>
     <button class="btn btn-p" style="flex:1;" onclick="saveNewTask()">💾 Save Task</button>
@@ -1048,7 +1072,7 @@ function setupPWA(){
   const manifest={
     name:'PlantLog',short_name:'PlantLog',
     description:'Field Visit & Plant Report App',
-    start_url:'./',display:'standalone',
+    start_url:'./',display:'standalone',scope:'./',
     background_color:'#ffffff',theme_color:'#1D9E75',
     orientation:'portrait-primary',
     icons:[
@@ -1256,6 +1280,7 @@ function openNewTaskModal(prefillDate, prefillCat){
   selectTaskCat(prefillCat||'work');
   if(prefillDate)document.getElementById('task-date-start').value=prefillDate;
   populateTaskTripSelect();populateMachineSelect();populatePlanSelect();
+  resetTaskCheckItems();
   openModal('modal-new-task');
 }
 
@@ -1276,6 +1301,8 @@ function openEditTaskModal(id){
   document.getElementById('task-period').value=tk.period||'weekly';
   selectTaskCat(tk.category||'work');
   populateTaskTripSelect();populateMachineSelect();populatePlanSelect();
+  resetTaskCheckItems();
+  if(tk.checklist)loadTaskCheckItems(tk.checklist);
   setTimeout(()=>{
     if(tk.machine)document.getElementById('task-machine').value=tk.machine;
     if(tk.plan)document.getElementById('task-plan').value=tk.plan;
@@ -1326,7 +1353,8 @@ function saveNewTask(){
     date:dateStart,
     time:document.getElementById('task-time-start').value,
     createdAt: editingTaskId?(S.tasks.find(t=>t.id===editingTaskId)||{}).createdAt||now:now,
-    updatedAt:now
+    updatedAt:now,
+    checklist:[...taskCheckItems]
   };
   if(editingTaskId){
     const idx=S.tasks.findIndex(t=>t.id===editingTaskId);
@@ -1334,10 +1362,12 @@ function saveNewTask(){
   } else {
     S.tasks.push(task);
   }
+  const wasEditing=!!editingTaskId;
   sv();closeModal('modal-new-task');editingTaskId=null;
-  showToast((editingTaskId?'Task updated':'Task saved')+' ✓');
+  showToast((wasEditing?'Task updated':'Task saved')+' ✓');
   renderTasks();renderDash();renderCalendar();
   if(Notification.permission==='granted')scheduleNotifications();
+  svAndSync('task');
 }
 
 function calcDuration(tk){
@@ -1433,6 +1463,12 @@ function renderTasks(){
           ${trip?`<div class="tc-meta-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>${trip}</div>`:''}
           ${isOver?`<div class="tc-meta-item" style="color:var(--red);">⚠ Overdue</div>`:''}
         </div>
+        ${tk.checklist&&tk.checklist.length?`<div style="display:flex;align-items:center;gap:5px;margin-bottom:6px;">
+          <div style="flex:1;height:4px;background:var(--g200);border-radius:2px;overflow:hidden;">
+            <div style="height:100%;border-radius:2px;background:var(--green);width:${Math.round((tk.checklist.filter(c=>c.done).length/tk.checklist.length)*100)}%;transition:width 0.3s;"></div>
+          </div>
+          <span style="font-size:10px;color:var(--g500);flex-shrink:0;">${tk.checklist.filter(c=>c.done).length}/${tk.checklist.length}</span>
+        </div>`:''}
         <div class="tc-footer">
           <span class="badge" style="background:${cc.bg};color:${cc.text};font-size:10px;">${cc.icon} ${cc.label}</span>
           <div style="display:flex;align-items:center;gap:6px;">
@@ -1489,10 +1525,19 @@ function setTaskStatus(id,status){
   const tk=S.tasks.find(t=>t.id===id);if(!tk)return;
   tk.status=status;tk.updatedAt=new Date().toISOString();
   sv();renderTasks();renderDash();renderCalendar();
+  svAndSync('task_status');
 }
 function deleteTask(id){
   if(!confirm('Delete this task?'))return;
   S.tasks=S.tasks.filter(t=>t.id!==id);sv();renderTasks();renderDash();renderCalendar();
+  svAndSync('task_delete');
+}
+function toggleDetailCheck(taskId, checkId){
+  const tk=S.tasks.find(t=>t.id===taskId);
+  if(!tk||!tk.checklist)return;
+  const ci=tk.checklist.find(c=>c.id===checkId);
+  if(ci){ci.done=!ci.done;tk.updatedAt=new Date().toISOString();}
+  sv();svAndSync('checklist');
 }
 
 function openTaskDetail(id){
@@ -1520,6 +1565,16 @@ function openTaskDetail(id){
       ${tk.plan?`<div class="dg-item"><div class="dg-label">Plan</div><div class="dg-val">${tk.plan}</div></div>`:''}
       ${trip?`<div class="dg-item"><div class="dg-label">Trip</div><div class="dg-val">${trip}</div></div>`:''}
     </div>
+    ${tk.checklist&&tk.checklist.length?`
+    <div style="font-size:11px;font-weight:600;color:var(--g500);margin-bottom:6px;">CHECKLIST (${tk.checklist.filter(c=>c.done).length}/${tk.checklist.length})</div>
+    <div style="background:var(--g100);border-radius:var(--rs);padding:8px 10px;margin-bottom:12px;">
+      ${tk.checklist.map(ci=>`<div style="display:flex;align-items:center;gap:7px;padding:4px 0;border-bottom:1px solid var(--g200);">
+        <span style="width:16px;height:16px;border-radius:50%;background:${ci.done?'var(--green)':'var(--g300)'};display:flex;align-items:center;justify-content:center;font-size:9px;color:#fff;flex-shrink:0;">${ci.done?'✓':''}</span>
+        <span style="font-size:12px;${ci.done?'text-decoration:line-through;color:var(--g400);':''}">${ci.text}</span>
+        <button onclick="toggleDetailCheck('${tk.id}','${ci.id}');openTaskDetail('${tk.id}')" style="margin-left:auto;font-size:10px;border:1px solid var(--g300);background:#fff;border-radius:4px;padding:2px 7px;cursor:pointer;color:var(--g600);">${ci.done?'Undo':'Done'}</button>
+      </div>`).join('')}
+    </div>`:''
+    }
     <div style="font-size:11px;font-weight:600;color:var(--g500);margin-bottom:8px;">STATUS</div>
     <div class="status-seg" style="display:inline-flex;margin-bottom:14px;">
       <button class="ss-btn ${tk.status==='pending'?'active-p':''}" style="padding:8px 14px;font-size:13px;" onclick="setTaskStatus('${tk.id}','pending');openTaskDetail('${tk.id}')">○ Pending</button>
@@ -1540,6 +1595,122 @@ function openTaskForDay(){
   openNewTaskModal(selDay, taskCat==='kanban'?'work':taskCat==='all'?'work':taskCat);
 }
 
+// ── TASK SUB-CHECKLIST ───────────────────────────────────────
+let taskCheckItems=[];  // [{id, text, done}] for current modal
+
+function toggleTaskChecklist(){
+  const body=document.getElementById('task-cl-body');
+  const btn=document.getElementById('task-cl-toggle');
+  const isOpen=body.style.display!=='none';
+  body.style.display=isOpen?'none':'';
+  btn.textContent=isOpen?'＋ Add items':'▲ Collapse';
+  if(!isOpen){
+    renderTaskCheckTemplates();
+    renderTaskCheckItems();
+  }
+}
+
+function renderTaskCheckTemplates(){
+  const el=document.getElementById('task-cl-templates');
+  if(!el)return;
+  const templates=S.templates||[];
+  if(!templates.length){el.innerHTML='<span style="font-size:11px;color:var(--g400);">No templates yet — add in Settings</span>';return;}
+  el.innerHTML=templates.map((tmpl,i)=>{
+    const already=taskCheckItems.some(ci=>ci.text===tmpl);
+    return `<button onclick="addTemplateToTaskCheck(${i})"
+      style="padding:4px 9px;border-radius:20px;font-size:11px;border:1px solid ${already?'var(--green)':'var(--g300)'};background:${already?'var(--gl)':'#fff'};color:${already?'var(--gd)':'var(--g600)'};cursor:pointer;font-family:var(--font);transition:all 0.15s;"
+      ${already?'disabled':''}>
+      ${already?'✓ ':''} ${tmpl}
+    </button>`;
+  }).join('');
+}
+
+function addTemplateToTaskCheck(idx){
+  const tmpl=S.templates[idx];
+  if(!tmpl||taskCheckItems.some(ci=>ci.text===tmpl))return;
+  taskCheckItems.push({id:'tci_'+Date.now()+'_'+idx, text:tmpl, done:false});
+  renderTaskCheckTemplates();
+  renderTaskCheckItems();
+  updateTaskCheckSummary();
+}
+
+function addTaskCheckItem(){
+  const input=document.getElementById('task-cl-input');
+  const text=(input.value||'').trim();
+  if(!text)return;
+  taskCheckItems.push({id:'tci_'+Date.now(), text, done:false});
+  input.value='';
+  renderTaskCheckItems();
+  updateTaskCheckSummary();
+}
+
+function toggleTaskCheckDone(id){
+  const item=taskCheckItems.find(ci=>ci.id===id);
+  if(item)item.done=!item.done;
+  renderTaskCheckItems();
+  updateTaskCheckSummary();
+}
+
+function removeTaskCheckItem(id){
+  taskCheckItems=taskCheckItems.filter(ci=>ci.id!==id);
+  renderTaskCheckItems();
+  renderTaskCheckTemplates();
+  updateTaskCheckSummary();
+}
+
+function renderTaskCheckItems(){
+  const el=document.getElementById('task-cl-items');
+  if(!el)return;
+  if(!taskCheckItems.length){el.innerHTML='';return;}
+  el.innerHTML=taskCheckItems.map(ci=>`
+    <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--g100);">
+      <button onclick="toggleTaskCheckDone('${ci.id}')"
+        style="width:20px;height:20px;border-radius:50%;border:1.5px solid ${ci.done?'var(--green)':'var(--g300)'};
+        background:${ci.done?'var(--green)':'#fff'};color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0;">
+        ${ci.done?'✓':''}
+      </button>
+      <span style="flex:1;font-size:13px;color:var(--g800);${ci.done?'text-decoration:line-through;color:var(--g400);':''}">
+        ${ci.text}
+      </span>
+      <button onclick="removeTaskCheckItem('${ci.id}')"
+        style="width:20px;height:20px;border-radius:50%;border:none;background:var(--g100);color:var(--g500);cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;">×</button>
+    </div>`).join('');
+}
+
+function updateTaskCheckSummary(){
+  const el=document.getElementById('task-cl-summary');
+  if(!el)return;
+  if(!taskCheckItems.length){el.textContent='';return;}
+  const done=taskCheckItems.filter(ci=>ci.done).length;
+  el.textContent=`${taskCheckItems.length} items · ${done} done`;
+}
+
+function loadTaskCheckItems(items){
+  taskCheckItems=(items||[]).map(ci=>({...ci}));
+  updateTaskCheckSummary();
+  // If there are items, auto-expand
+  if(taskCheckItems.length){
+    const body=document.getElementById('task-cl-body');
+    const btn=document.getElementById('task-cl-toggle');
+    if(body)body.style.display='';
+    if(btn)btn.textContent='▲ Collapse';
+    renderTaskCheckTemplates();
+    renderTaskCheckItems();
+  }
+}
+
+function resetTaskCheckItems(){
+  taskCheckItems=[];
+  const body=document.getElementById('task-cl-body');
+  const btn=document.getElementById('task-cl-toggle');
+  if(body)body.style.display='none';
+  if(btn)btn.textContent='＋ Add items';
+  const itemsEl=document.getElementById('task-cl-items');
+  if(itemsEl)itemsEl.innerHTML='';
+  const sumEl=document.getElementById('task-cl-summary');
+  if(sumEl)sumEl.textContent='';
+}
+
 
 // ═══════ TRIPS ═══════
 function saveNewTrip(){
@@ -1554,6 +1725,7 @@ function saveNewTrip(){
   document.getElementById('nt-transport').value='';
   showToast(t('saveTrip')+' ✓');renderTripList();renderDash();
   if(Notification.permission==='granted')scheduleNotifications();
+  svAndSync('trip');
 }
 function renderTripList(filter='all'){
   const list=document.getElementById('trip-list');
@@ -1730,7 +1902,7 @@ function rmDefaultMember(i){S.defaultTeam.splice(i,1);sv();renderDefaultTeam();}
 
 // ═══════ SIGNOFF ═══════
 function selRes(btn,val){signoffRes=val;document.querySelectorAll('.ropt').forEach(b=>b.classList.remove('sel'));btn.classList.add('sel');}
-function saveSignoff(){if(!curReport)return;curReport.signoff={summary:document.getElementById('signoff-summary').value,result:signoffRes,remarks:document.getElementById('signoff-remarks').value};curReport.signature=sigCanvas.toDataURL();sv();}
+function saveSignoff(){if(!curReport)return;curReport.signoff={summary:document.getElementById('signoff-summary').value,result:signoffRes,remarks:document.getElementById('signoff-remarks').value};curReport.signature=sigCanvas.toDataURL();sv();svAndSync('report');}
 
 // ═══════ SIGNATURE ═══════
 function initSig(){
@@ -1787,7 +1959,7 @@ function selCalDay(key,d){
       </div>`).join('');
   } else dtl.innerHTML='';
 }
-function setDayType(type){if(!selDay)return;if(type===null)delete S.leaveData[selDay];else S.leaveData[selDay]=type;sv();renderCalendar();}
+function setDayType(type){if(!selDay)return;if(type===null)delete S.leaveData[selDay];else S.leaveData[selDay]=type;sv();renderCalendar();svAndSync('leave');}
 function updateLeaveSummary(){
   const pfx=`${calY}-${String(calM+1).padStart(2,'0')}-`;
   let trip=0,leave=0,wfh=0;
@@ -1925,7 +2097,7 @@ function sendEmail(){
   window.location.href=`mailto:${to}${cc?'?cc='+cc+'&':'?'}subject=${subj}&body=${body}`;
   closeModal('modal-email');showToast('Opening email... attach the PDF');
 }
-function markCompleted(){const trip=S.trips.find(tr=>tr.id===curTrip);if(trip){trip.status='completed';sv();showToast('Completed ✓');renderDash();renderTripList();}}
+function markCompleted(){const trip=S.trips.find(tr=>tr.id===curTrip);if(trip){trip.status='completed';sv();showToast('Completed ✓');renderDash();renderTripList();svAndSync('trip_complete');}}
 
 // ═══════ UTILS ═══════
 function fmtDate(d){if(!d)return'—';try{return new Date(d+'T00:00:00').toLocaleDateString(S.lang==='vi'?'vi-VN':'en-GB',{day:'numeric',month:'short',year:'numeric'});}catch(e){return d;}}
@@ -2068,6 +2240,7 @@ async function syncToSheets(){
     priority:tk.priority||'medium',period:tk.period||'',
     machine:tk.machine||'',plan:tk.plan||'',tripId:tk.tripId||'',
     status:tk.status||'pending',
+    checklist:JSON.stringify(tk.checklist||[]),
     createdAt:tk.createdAt||'',updatedAt:tk.updatedAt||new Date().toISOString()
   }));
 
@@ -2125,6 +2298,7 @@ async function loadFromSheets(){
           hours:tk.Hours||'',minutes:tk.Minutes||'',
           priority:tk.Priority,period:tk.Period,machine:tk.Machine,plan:tk.Plan,
           tripId:tk.TripID,status:tk.Status,
+          checklist:tk.Checklist?JSON.parse(tk.Checklist):[],
           date:tk.DateStart||tk.Date||'',time:tk.TimeStart||tk.Time||'',
           createdAt:tk.CreatedAt,updatedAt:tk.UpdatedAt
         }));
@@ -2145,9 +2319,19 @@ async function loadFromSheets(){
   }
 }
 
-// Auto-sync debounced (5s after last save)
+// Auto-sync debounced — triggers 3s after last save action
 let syncTimer=null;
-function svAndSync(){sv();if(S.gsUrl){clearTimeout(syncTimer);syncTimer=setTimeout(()=>syncToSheets(),5000);}}
+function svAndSync(source){
+  sv();
+  if(!S.gsUrl)return;
+  clearTimeout(syncTimer);
+  syncTimer=setTimeout(()=>{
+    // Show subtle indicator
+    const el=document.getElementById('gsheet-status');
+    if(el)el.textContent='Syncing…';
+    syncToSheets().then(()=>{}).catch(()=>{});
+  },3000);
+}
 
 init();
 </script>

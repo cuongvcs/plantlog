@@ -30,7 +30,7 @@ const SHEET_NAME_LOG      = 'SyncLog';
 // ── COLUMN DEFINITIONS ──────────────────────────────────────
 const COLS = {
   trips:     ['ID','Plant','Location','Date','DateEnd','Purpose','Contact','Transport','Status','CreatedAt'],
-  tasks:     ['ID','Title','Description','Category','DateStart','TimeStart','DateEnd','TimeEnd','Hours','Minutes','Priority','Period','Machine','Plan','TripID','Status','CreatedAt','UpdatedAt'],
+  tasks:     ['ID','Title','Description','Category','DateStart','TimeStart','DateEnd','TimeEnd','Hours','Minutes','Priority','Period','Machine','Plan','TripID','Status','Checklist','CreatedAt','UpdatedAt'],
   leave:     ['Date','Type','Note'],
   reports:   ['TripID','SignoffSummary','SignoffResult','SignoffRemarks','SignedAt'],
   checklist: ['TripID','ItemID','Name','Result','Note'],
@@ -153,6 +153,7 @@ function syncAll(payload) {
       tk.priority||'medium', tk.period||'',
       tk.machine||'', tk.plan||'', tk.tripId||'',
       tk.status||'pending',
+      tk.checklist||'[]',
       tk.createdAt||'', tk.updatedAt||new Date().toISOString()
     ]));
     // Save machine/plan lists as named ranges for easy access
