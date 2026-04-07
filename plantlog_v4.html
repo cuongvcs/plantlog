@@ -527,12 +527,22 @@ html,body{height:100%;font-family:var(--font);background:#f0f2f0;color:var(--g90
   <div class="topbar">
     <button class="tb-back" onclick="showScreen('report');gotoStep(4);">←</button>
     <div class="tb-title" data-t="exportPdfReport">Export Report</div>
+    <button class="tb-action" onclick="showScreen('trips')" title="Back to trips" style="font-size:14px;font-weight:600;">✕</button>
   </div>
   <div class="sb">
+    <!-- Report name field -->
+    <div class="card" style="padding:12px 14px;margin-bottom:10px;">
+      <div style="font-size:11px;font-weight:600;color:var(--g500);letter-spacing:0.06em;margin-bottom:6px;">REPORT NAME</div>
+      <input class="fi" id="report-name-input" placeholder="e.g. Annual Inspection — Map Ta Phut" style="font-size:13px;" oninput="updateReportNamePreview()">
+      <div style="font-size:11px;color:var(--g500);margin-top:4px;">This name appears on the PDF and as the file name.</div>
+    </div>
     <div class="pprev" id="pdf-preview-content"></div>
     <button class="btn btn-p btn-full" onclick="exportPDF()" style="margin-bottom:8px;">⬇ <span data-t="downloadPdf">Download PDF</span></button>
     <button class="btn btn-o btn-full" onclick="emailPDF()" style="margin-bottom:8px;">✉️ <span data-t="emailPdf">Email Report</span></button>
-    <button class="btn btn-o btn-full" onclick="markCompleted()">✅ <span data-t="markCompleted">Mark completed</span></button>
+    <div style="display:flex;gap:8px;margin-bottom:8px;">
+      <button class="btn btn-o" style="flex:1;" onclick="markCompleted()">✅ <span data-t="markCompleted">Mark completed</span></button>
+      <button class="btn btn-o" style="flex:1;" onclick="showScreen('trips')">🏠 Back to Trips</button>
+    </div>
   </div>
 </div>
 
@@ -1172,7 +1182,7 @@ function showScreen(n){
   if(n==='home')renderDash();
   if(n==='trips')renderTripList();
   if(n==='tasks')renderTasks();
-  if(n==='export'){saveSignoff();buildPDFPreview();}
+  if(n==='export'){saveSignoff();buildPDFPreview();populateReportName();}
   if(n==='leave')renderCalendar();
 }
 function showToast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),2800);}
@@ -2023,6 +2033,26 @@ function addTemplate(){const v=document.getElementById('tmpl-new').value.trim();
 function rmTemplate(i){S.templates.splice(i,1);sv();renderTemplates();}
 
 // ═══════ PDF ═══════
+function populateReportName(){
+  const trip=S.trips.find(tr=>tr.id===curTrip);
+  if(!trip)return;
+  const input=document.getElementById('report-name-input');
+  if(!input)return;
+  // Set default name if empty
+  if(!input.value.trim()){
+    input.value=`Plant Visit Report — ${trip.plant}${trip.date?' — '+fmtDate(trip.date):''}`;
+  }
+  updateReportNamePreview();
+}
+function updateReportNamePreview(){
+  const input=document.getElementById('report-name-input');
+  const trip=S.trips.find(tr=>tr.id===curTrip);
+  const name=(input&&input.value.trim())||(trip?`Plant Visit Report — ${trip.plant}`:'Report');
+  const titleEl=document.getElementById('preview-report-title');
+  const subEl=document.getElementById('preview-report-sub');
+  if(titleEl)titleEl.textContent=name;
+  if(subEl&&trip)subEl.textContent=`${trip.plant}  ·  ${fmtDate(trip.date)}`;
+}
 function buildPDFPreview(){
   if(!curTrip||!curReport)return;
   const trip=S.trips.find(tr=>tr.id===curTrip);if(!trip)return;
@@ -2030,7 +2060,11 @@ function buildPDFPreview(){
   const pc=r.checklist.filter(c=>c.result==='pass').length;
   const fc=r.checklist.filter(c=>c.result==='fail').length;
   document.getElementById('pdf-preview-content').innerHTML=`
-    <div class="ps"><div class="pst">Trip Info</div>
+    <div class="ps" style="border-bottom:2px solid var(--g200);margin-bottom:14px;">
+      <div style="background:#00843D;border-radius:var(--rs);padding:12px 14px;margin-bottom:10px;color:#fff;">
+        <div style="font-size:14px;font-weight:700;" id="preview-report-title">Plant Visit Report</div>
+        <div style="font-size:12px;opacity:0.85;margin-top:3px;" id="preview-report-sub"></div>
+      </div>
       ${pr('Plant',trip.plant)}${pr('Location',trip.location||'—')}${pr('Date',fmtDate(trip.date))}
       ${pr('Engineer',p.name||'—')}${pr('Title',p.title||'—')}${pr('Company',p.company||'—')}
     </div>
@@ -2060,11 +2094,16 @@ function exportPDF(){
   const trip=S.trips.find(tr=>tr.id===curTrip);const r=curReport;const p=S.profile;
   const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
   const W=210,mg=16;let y=20;
-  doc.setFillColor(29,158,117);doc.rect(0,0,W,30,'F');
-  doc.setTextColor(255,255,255);doc.setFontSize(16);doc.setFont('helvetica','bold');doc.text('PLANT VISIT REPORT',mg,13);
-  doc.setFontSize(9);doc.setFont('helvetica','normal');doc.text(`${trip.plant}  ·  ${fmtDate(trip.date)}`,mg,20);
-  doc.text(`${p.name||'Engineer'}${p.title?' · '+p.title:''}${p.company?' · '+p.company:''}`,mg,26);y=38;
-  const sec=title=>{doc.setFillColor(241,243,245);doc.rect(mg,y-4,W-mg*2,8,'F');doc.setTextColor(15,110,86);doc.setFontSize(8);doc.setFont('helvetica','bold');doc.text(title,mg+2,y+1);doc.setTextColor(33,37,41);y+=8;};
+  doc.setFillColor(0,132,61);doc.rect(0,0,W,30,'F');
+  const reportTitle=(document.getElementById('report-name-input')&&document.getElementById('report-name-input').value.trim())||`Plant Visit Report — ${trip.plant}`;
+  doc.setTextColor(255,255,255);doc.setFontSize(15);doc.setFont('helvetica','bold');
+  const titleLines=doc.splitTextToSize(reportTitle,W-mg*2);
+  if(titleLines.length>1){doc.setFontSize(11);}
+  doc.text(titleLines,mg,titleLines.length>1?10:13);
+  const headerY=titleLines.length>1?10+titleLines.length*5:20;
+  doc.setFontSize(9);doc.setFont('helvetica','normal');doc.text(`${trip.plant}  ·  ${fmtDate(trip.date)}`,mg,headerY);
+  doc.text(`${p.name||'Engineer'}${p.title?' · '+p.title:''}${p.company?' · '+p.company:''}`,mg,headerY+6);y=38;
+  const sec=title=>{doc.setFillColor(241,243,245);doc.rect(mg,y-4,W-mg*2,8,'F');doc.setTextColor(0,132,61);doc.setFontSize(8);doc.setFont('helvetica','bold');doc.text(title,mg+2,y+1);doc.setTextColor(33,37,41);y+=8;};
   const kv2=(l,v)=>{doc.setFontSize(9);doc.setFont('helvetica','normal');doc.setTextColor(100,100,100);doc.text(l,mg,y);doc.setTextColor(33,37,41);doc.setFont('helvetica','bold');const lines=doc.splitTextToSize(String(v),100);doc.text(lines,110,y);doc.setFont('helvetica','normal');y+=lines.length*5+1;if(y>270){doc.addPage();y=20;}};
   const ln=()=>{doc.setDrawColor(220,220,220);doc.line(mg,y,W-mg,y);y+=4;};
   sec('TRIP INFO');kv2('Plant',trip.plant);kv2('Location',trip.location||'—');kv2('Date',fmtDate(trip.date));kv2('Purpose',trip.purpose||'—');ln();
@@ -2081,11 +2120,15 @@ function exportPDF(){
   doc.setDrawColor(200,200,200);doc.rect(mg,y,W-mg*2,34);doc.setFontSize(8);doc.setTextColor(100,100,100);doc.text('Signature:',mg+4,y+7);doc.setFont('helvetica','bold');doc.setTextColor(33,37,41);doc.text(p.name||'Engineer',mg+4,y+29);doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(100,100,100);doc.text(new Date().toLocaleDateString('en-GB'),mg+4,y+33);
   if(r.signature&&r.signature.length>100){try{doc.addImage(r.signature,'PNG',mg+40,y+4,65,25);}catch(e){}}
   doc.setFontSize(7);doc.setTextColor(150,150,150);doc.text(`PlantLog v3  ·  ${new Date().toLocaleString()}`,mg,290);
-  doc.save(`PlantLog_${(trip.plant||'report').replace(/\s+/g,'_')}_${trip.date}.pdf`);showToast('PDF downloaded ✓');
+  const safeTitle=(document.getElementById('report-name-input')&&document.getElementById('report-name-input').value.trim())||trip.plant||'report';
+  const safeDate=(trip.date||'').replace(/-/g,'');
+  const fileName=`PlantLog_${safeTitle.replace(/[^a-zA-Z0-9\s-]/g,'').replace(/\s+/g,'_').slice(0,40)}_${safeDate}.pdf`;
+  doc.save(fileName);showToast('PDF downloaded ✓');
 }
 function emailPDF(){
   const trip=S.trips.find(tr=>tr.id===curTrip);if(!trip)return;
-  document.getElementById('email-subject').value=`Plant Visit Report — ${trip.plant} — ${fmtDate(trip.date)}`;
+  const rName=(document.getElementById('report-name-input')&&document.getElementById('report-name-input').value.trim())||`Plant Visit Report — ${trip.plant}`;
+  document.getElementById('email-subject').value=`${rName} — ${fmtDate(trip.date)}`;
   document.getElementById('email-body').value=`Dear Team,\n\nPlease find attached the plant visit report:\n\nPlant: ${trip.plant}\nDate: ${fmtDate(trip.date)}\nLocation: ${trip.location||'—'}\nEngineer: ${S.profile.name||'Engineer'}\nResult: ${curReport?.signoff?.result||'Completed'}\n\nBest regards,\n${S.profile.name||'Engineer'}\n${S.profile.title||''}\n${S.profile.company||''}`;
   openModal('modal-email');
 }
@@ -2100,7 +2143,19 @@ function sendEmail(){
 function markCompleted(){const trip=S.trips.find(tr=>tr.id===curTrip);if(trip){trip.status='completed';sv();showToast('Completed ✓');renderDash();renderTripList();svAndSync('trip_complete');}}
 
 // ═══════ UTILS ═══════
-function fmtDate(d){if(!d)return'—';try{return new Date(d+'T00:00:00').toLocaleDateString(S.lang==='vi'?'vi-VN':'en-GB',{day:'numeric',month:'short',year:'numeric'});}catch(e){return d;}}
+function fmtDate(d){
+  if(!d||d==='—'||d==='undefined'||d==='null')return'—';
+  try{
+    // Strip any existing time part, keep only YYYY-MM-DD
+    const dateOnly=String(d).trim().slice(0,10);
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(dateOnly))return String(d);
+    const[y,m,day]=dateOnly.split('-').map(Number);
+    if(isNaN(y)||isNaN(m)||isNaN(day))return String(d);
+    // Use explicit parts to avoid timezone offset issues
+    const dt=new Date(y,m-1,day);
+    return dt.toLocaleDateString(S.lang==='vi'?'vi-VN':'en-GB',{day:'numeric',month:'short',year:'numeric'});
+  }catch(e){return String(d);}
+}
 function clearAllData(){if(!confirm('Delete ALL data? This cannot be undone.'))return;S={profile:{name:'',title:'',company:'',empid:''},trips:[],reports:{},tasks:[],leaveData:{},machines:[],plans:[],templates:['Safety pressure valves','Fire suppression system','Emergency stop buttons','PPE compliance check','Electrical panel condition','Pipe insulation condition'],defaultTeam:[],lang:S.lang};sv();loadProfile();renderDash();renderTripList();renderCalendar();renderTasks();renderDefaultTeam();showToast('Data cleared');}
 
 
