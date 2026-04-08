@@ -2334,15 +2334,15 @@ function exportPDF(){
   const W=210,mg=16;let y=20;
   doc.setFillColor(0,132,61);doc.rect(0,0,W,30,'F');
   const reportTitle=(document.getElementById('report-name-input')&&document.getElementById('report-name-input').value.trim())||`Plant Visit Report — ${trip.plant}`;
-  // Header: title (large) + date only
+  // Header: 3 lines — report title · plant+date · engineer/company
   doc.setTextColor(255,255,255);
   const titleLines=doc.splitTextToSize(reportTitle,W-mg*2);
-  const bigFont=titleLines.length>1?12:15;
+  const bigFont=titleLines.length>1?11:15;
   doc.setFontSize(bigFont);doc.setFont('helvetica','bold');
-  doc.text(titleLines,mg,titleLines.length>1?10:14);
-  const headerY=titleLines.length>1?10+titleLines.length*(bigFont*0.4):22;
+  doc.text(titleLines,mg,titleLines.length>1?9:13);
   doc.setFontSize(9);doc.setFont('helvetica','normal');
-  doc.text(fmtDate(trip.date),mg,Math.min(headerY,26));
+  doc.text(`${trip.plant}  ·  ${fmtDate(trip.date)}`,mg,20);
+  doc.text(`${p.name||'Engineer'}${p.title?' · '+p.title:''}${p.company?' · '+p.company:''}`,mg,26);
   y=36;
   const sec=title=>{doc.setFillColor(241,243,245);doc.rect(mg,y-4,W-mg*2,8,'F');doc.setTextColor(0,132,61);doc.setFontSize(8);doc.setFont('helvetica','bold');doc.text(title,mg+2,y+1);doc.setTextColor(33,37,41);y+=8;};
   const kv2=(l,v)=>{doc.setFontSize(9);doc.setFont('helvetica','normal');doc.setTextColor(100,100,100);doc.text(l,mg,y);doc.setTextColor(33,37,41);doc.setFont('helvetica','bold');const lines=doc.splitTextToSize(String(v),100);doc.text(lines,110,y);doc.setFont('helvetica','normal');y+=lines.length*5+1;if(y>270){doc.addPage();y=20;}};
@@ -2438,9 +2438,10 @@ function exportPDF(){
   doc.setDrawColor(200,200,200);doc.rect(mg,y,W-mg*2,34);doc.setFontSize(8);doc.setTextColor(100,100,100);doc.text('Signature:',mg+4,y+7);doc.setFont('helvetica','bold');doc.setTextColor(33,37,41);doc.text(p.name||'Engineer',mg+4,y+29);doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(100,100,100);doc.text(new Date().toLocaleDateString('en-GB'),mg+4,y+33);
   if(r.signature&&r.signature.length>100){try{doc.addImage(r.signature,'PNG',mg+40,y+4,65,25);}catch(e){}}
   doc.setFontSize(7);doc.setTextColor(150,150,150);doc.text(`PlantLog v3  ·  ${new Date().toLocaleString()}`,mg,290);
-  const safeTitle=(document.getElementById('report-name-input')&&document.getElementById('report-name-input').value.trim())||trip.plant||'report';
+  // Filename: trip plant + date only (clean, not the custom report title)
+  const safePlant=(trip.plant||'Report').replace(/[^a-zA-Z0-9\s]/g,'').replace(/\s+/g,'_').slice(0,30);
   const safeDate=(trip.date||'').replace(/-/g,'');
-  const fileName=`PlantLog_${safeTitle.replace(/[^a-zA-Z0-9\s-]/g,'').replace(/\s+/g,'_').slice(0,40)}_${safeDate}.pdf`;
+  const fileName=`PlantLog_${safePlant}_${safeDate}.pdf`;
   doc.save(fileName);showToast('PDF downloaded ✓');
 }
 function emailPDF(){
