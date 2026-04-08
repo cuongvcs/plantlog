@@ -355,26 +355,25 @@ html,body{height:100%;font-family:var(--font);background:#f0f2f0;color:var(--g90
 .dg-val{font-weight:500;color:var(--g800);}
 
 
-/* ── REPORT DAILY TASKS ── */
-.day-block{background:#fff;border-radius:var(--r);box-shadow:var(--sh);margin-bottom:12px;overflow:hidden;}
-.day-block-header{background:linear-gradient(135deg,#00843D,#1D9E75);color:#fff;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;}
-.day-block-date{font-size:13px;font-weight:600;letter-spacing:-0.01em;}
-.day-block-sub{font-size:11px;opacity:0.8;margin-top:1px;}
-.day-block-badge{background:rgba(255,255,255,0.22);border-radius:12px;padding:2px 9px;font-size:11px;font-weight:500;}
-.day-task-row{display:flex;align-items:flex-start;gap:10px;padding:10px 14px;border-bottom:1px solid var(--g100);}
-.day-task-row:last-child{border-bottom:none;}
-.day-task-check{width:22px;height:22px;border-radius:50%;border:1.5px solid var(--g300);background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0;margin-top:1px;transition:all 0.15s;}
-.day-task-check.done{background:var(--green);border-color:var(--green);color:#fff;}
-.day-task-check.in_progress{background:var(--al);border-color:var(--amber);color:#92400E;}
-.day-task-info{flex:1;min-width:0;}
-.day-task-title{font-size:13px;font-weight:500;color:var(--g800);line-height:1.3;}
-.day-task-meta{font-size:11px;color:var(--g500);margin-top:3px;display:flex;gap:8px;flex-wrap:wrap;}
-.day-task-notes{width:100%;margin-top:6px;padding:6px 8px;border:1px solid var(--g200);border-radius:6px;font-family:var(--font);font-size:12px;color:var(--g700);background:var(--g50);resize:none;min-height:40px;outline:none;}
-.day-task-notes:focus{border-color:var(--green);}
-.day-add-btn{display:flex;align-items:center;gap:6px;padding:10px 14px;font-size:12px;color:var(--green);background:none;border:none;cursor:pointer;font-family:var(--font);font-weight:500;width:100%;}
-.day-add-btn:hover{background:var(--gl);}
-.no-trip-tasks{text-align:center;padding:30px 20px;}
-.task-link-chip{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:12px;font-size:10px;font-weight:500;background:var(--gl);color:var(--gd);border:1px solid rgba(29,158,117,0.2);}
+/* ── REPORT TASK PICKER ── */
+.task-pick-item{display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border-bottom:1px solid var(--g100);background:#fff;transition:background 0.15s;cursor:pointer;}
+.task-pick-item:last-child{border-bottom:none;}
+.task-pick-item.selected{background:var(--gl);}
+.task-pick-cb{width:22px;height:22px;border-radius:6px;border:1.5px solid var(--g300);background:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;color:transparent;transition:all 0.15s;}
+.task-pick-item.selected .task-pick-cb{background:var(--green);border-color:var(--green);color:#fff;}
+.task-pick-info{flex:1;min-width:0;}
+.task-pick-title{font-size:13px;font-weight:500;color:var(--g800);line-height:1.3;}
+.task-pick-meta{font-size:11px;color:var(--g500);margin-top:3px;display:flex;flex-wrap:wrap;gap:6px;}
+.rpt-task-card{background:#fff;border-radius:var(--r);box-shadow:var(--sh);margin-bottom:8px;overflow:hidden;border-left:4px solid var(--g300);}
+.rpt-task-card.work{border-left-color:var(--green);}
+.rpt-task-card.leave{border-left-color:var(--amber);}
+.rpt-task-card.travel{border-left-color:var(--blue);}
+.rpt-task-body{padding:10px 12px;}
+.rpt-task-title{font-size:13px;font-weight:600;color:var(--g800);}
+.rpt-task-meta{font-size:11px;color:var(--g500);margin-top:3px;display:flex;flex-wrap:wrap;gap:6px;}
+.rpt-task-notes{width:100%;margin-top:8px;padding:7px 10px;border:1px solid var(--g200);border-radius:var(--rs);font-family:var(--font);font-size:12px;color:var(--g700);background:var(--g50);resize:none;min-height:50px;outline:none;transition:border-color 0.15s;}
+.rpt-task-notes:focus{border-color:var(--green);}
+.task-link-chip{display:inline-flex;align-items:center;gap:4px;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:500;background:var(--gl);color:var(--gd);}
 </style>
 </head>
 <body>
@@ -494,7 +493,7 @@ html,body{height:100%;font-family:var(--font);background:#f0f2f0;color:var(--g90
       <button class="stab" onclick="gotoStep(1)" data-t="tab2">2 Readings</button>
       <button class="stab" onclick="gotoStep(2)" data-t="tab3">3 Issues</button>
       <button class="stab" onclick="gotoStep(3)" data-t="tab4">4 Team</button>
-      <button class="stab" onclick="gotoStep(4)" data-t="tab5">5 Daily Tasks</button>
+      <button class="stab" onclick="gotoStep(4)" data-t="tab5">5 Tasks</button>
       <button class="stab" onclick="gotoStep(5)" data-t="tab6">6 Sign-off</button>
     </div>
   </div>
@@ -520,10 +519,27 @@ html,body{height:100%;font-family:var(--font);background:#f0f2f0;color:var(--g90
       <button class="btn btn-o btn-full" onclick="openModal('modal-add-member')">＋ <span data-t="addTeamMember">Add member</span></button>
       <div class="brow"><button class="btn btn-o" onclick="gotoStep(2)">←</button><button class="btn btn-p" style="flex:1;" onclick="gotoStep(4)" data-t="nextSignoff">Next: Sign-off →</button></div>
     </div>
-    <!-- STEP 4: Daily Tasks -->
+    <!-- STEP 4: Tasks in Report -->
     <div id="step-4" style="display:none;">
-      <div id="daily-tasks-body"></div>
-      <div class="brow" style="margin-top:4px;">
+      <!-- Picker: select tasks to include -->
+      <div class="card" id="task-picker-card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+          <div style="font-size:11px;font-weight:600;color:var(--g500);">ADD TASKS TO REPORT</div>
+          <div style="display:flex;gap:6px;">
+            <button onclick="selectAllReportTasks()" style="font-size:11px;color:var(--green);background:none;border:none;cursor:pointer;font-weight:600;">All</button>
+            <button onclick="clearAllReportTasks()" style="font-size:11px;color:var(--g500);background:none;border:none;cursor:pointer;">Clear</button>
+          </div>
+        </div>
+        <div style="font-size:12px;color:var(--g500);margin-bottom:8px;">Select jobs/tasks to include in this report. Tap to add or remove.</div>
+        <div id="task-picker-list"></div>
+        <div id="task-picker-empty" style="display:none;padding:16px 0;text-align:center;font-size:13px;color:var(--g400);">No tasks found. Create tasks in the Tasks screen first.</div>
+      </div>
+      <!-- Selected tasks preview with notes -->
+      <div id="report-tasks-preview" style="display:none;">
+        <div style="font-size:11px;font-weight:600;color:var(--g500);margin:8px 0 6px;letter-spacing:0.06em;">SELECTED TASKS (<span id="selected-task-count">0</span>)</div>
+        <div id="report-tasks-list"></div>
+      </div>
+      <div class="brow" style="margin-top:8px;">
         <button class="btn btn-o" onclick="gotoStep(3)">←</button>
         <button class="btn btn-p" style="flex:1;" onclick="gotoStep(5)">Next: Sign-off →</button>
       </div>
@@ -1004,7 +1020,7 @@ const T={
     myTrips:'My Trips',all:'All',planned:'Planned',inProgress:'In Progress',completed:'Completed',
     pending:'Pending',done:'Done',kanban:'Kanban',
     delete:'Delete',openReport:'Open Report',
-    tab1:'1 Checklist',tab2:'2 Readings',tab3:'3 Issues',tab4:'4 Team',tab5:'5 Daily Tasks',tab6:'6 Sign-off',
+    tab1:'1 Checklist',tab2:'2 Readings',tab3:'3 Issues',tab4:'4 Team',tab5:'5 Tasks',tab6:'6 Sign-off',
     inspectionChecklist:'INSPECTION CHECKLIST',addCheckItem:'Add item',nextReadings:'Next: Readings →',
     equipmentReadings:'EQUIPMENT READINGS',addReading:'Add reading',nextIssues:'Next: Issues →',
     noIssues:'No issues found.',addIssue:'Add issue',nextTeam:'Next: Team →',
@@ -1045,7 +1061,7 @@ const T={
     myTrips:'Chuyến của tôi',all:'Tất cả',planned:'Đã lên kế hoạch',inProgress:'Đang thực hiện',completed:'Hoàn thành',
     pending:'Chờ xử lý',done:'Xong',kanban:'Kanban',
     delete:'Xóa',openReport:'Mở báo cáo',
-    tab1:'1 Danh mục',tab2:'2 Đo lường',tab3:'3 Sự cố',tab4:'4 Nhóm',tab5:'5 Kế hoạch ngày',tab6:'6 Ký duyệt',
+    tab1:'1 Danh mục',tab2:'2 Đo lường',tab3:'3 Sự cố',tab4:'4 Nhóm',tab5:'5 Nhiệm vụ',tab6:'6 Ký duyệt',
     inspectionChecklist:'DANH MỤC KIỂM TRA',addCheckItem:'Thêm mục',nextReadings:'Tiếp: Đo lường →',
     equipmentReadings:'SỐ LIỆU THIẾT BỊ',addReading:'Thêm số liệu',nextIssues:'Tiếp: Sự cố →',
     noIssues:'Không có sự cố.',addIssue:'Thêm sự cố',nextTeam:'Tiếp: Nhóm →',
@@ -1803,8 +1819,9 @@ function openReport(){
   if(tr.status==='planned'){tr.status='in_progress';sv();}
   document.getElementById('report-plant-name').textContent=tr.plant;
   document.getElementById('report-date').textContent=fmtDate(tr.date);
-  curReport=S.reports[tr.id]||{checklist:[],readings:[],issues:[],team:[],signoff:{summary:'',result:'Completed',remarks:''},signature:'',dailyNotes:{}};
-  if(!curReport.dailyNotes)curReport.dailyNotes={};
+  curReport=S.reports[tr.id]||{checklist:[],readings:[],issues:[],team:[],signoff:{summary:'',result:'Completed',remarks:''},signature:'',reportTasks:[],reportTaskNotes:{}};
+  if(!curReport.reportTasks)curReport.reportTasks=[];
+  if(!curReport.reportTaskNotes)curReport.reportTaskNotes={};
   S.reports[tr.id]=curReport;
   gotoStep(0);showScreen('report');updateSigDate();
   document.getElementById('signoff-summary').value=curReport.signoff.summary||'';
@@ -1826,188 +1843,159 @@ function gotoStep(n){
   if(n===1)renderReadings();
   if(n===2)renderIssues();
   if(n===3)renderTeam();
-  if(n===4)renderDailyTasks();
+  if(n===4)renderReportTaskPicker();
   if(n===5)saveSignoff();
 }
 
-// ═══════ DAILY TASKS IN REPORT ═══════
-function getDatesInRange(startDate, endDate){
-  const dates=[];
-  if(!startDate)return dates;
-  const end=endDate||startDate;
-  let cur=new Date(startDate+'T00:00:00');
-  const last=new Date(end+'T00:00:00');
-  while(cur<=last){
-    dates.push(cur.toISOString().slice(0,10));
-    cur.setDate(cur.getDate()+1);
+// ═══════ REPORT TASK PICKER ═══════
+
+function renderReportTaskPicker(){
+  if(!curReport)return;
+  if(!curReport.reportTasks)curReport.reportTasks=[];
+  if(!curReport.reportTaskNotes)curReport.reportTaskNotes={};
+
+  const pickerList=document.getElementById('task-picker-list');
+  const pickerEmpty=document.getElementById('task-picker-empty');
+  const preview=document.getElementById('report-tasks-preview');
+  if(!pickerList)return;
+
+  // All tasks — show all, sorted by date then category
+  const allTasks=[...S.tasks].sort((a,b)=>{
+    const da=a.dateStart||a.date||'';
+    const db=b.dateStart||b.date||'';
+    return da.localeCompare(db)||a.title.localeCompare(b.title);
+  });
+
+  if(!allTasks.length){
+    pickerList.innerHTML='';
+    if(pickerEmpty)pickerEmpty.style.display='';
+  } else {
+    if(pickerEmpty)pickerEmpty.style.display='none';
+    const catCfg=id=>({work:{icon:'🔧',col:'var(--gd)',bg:'var(--gl)'},leave:{icon:'🌴',col:'#92400E',bg:'var(--al)'},travel:{icon:'✈️',col:'#1E40AF',bg:'var(--bl)'}}[id]||{icon:'📋',col:'var(--g600)',bg:'var(--g100)'});
+    pickerList.innerHTML=allTasks.map(tk=>{
+      const sel=curReport.reportTasks.includes(tk.id);
+      const cc=catCfg(tk.category||'work');
+      const dateStr=tk.dateStart||tk.date||'';
+      const timeStr=tk.timeStart||(tk.time||'');
+      const dur=calcDuration(tk);
+      const statusColor=tk.status==='done'?'var(--gd)':tk.status==='in_progress'?'#92400E':'var(--g400)';
+      const statusLabel=tk.status==='done'?'Done':tk.status==='in_progress'?'In Progress':'Pending';
+      return `<div class="task-pick-item${sel?' selected':''}" onclick="toggleReportTask('${tk.id}')">
+        <div class="task-pick-cb">✓</div>
+        <div class="task-pick-info">
+          <div class="task-pick-title">${tk.title}</div>
+          <div class="task-pick-meta">
+            ${dateStr?`<span>📅 ${fmtDate(dateStr)}${timeStr?' '+timeStr:''}</span>`:''}
+            ${dur?`<span>⏱ ${dur}</span>`:''}
+            <span style="background:${cc.bg};color:${cc.col};padding:1px 6px;border-radius:8px;">${cc.icon} ${(tk.category||'work')}</span>
+            <span style="color:${statusColor};">● ${statusLabel}</span>
+            ${tk.machine?`<span>🔩 ${tk.machine}</span>`:''}
+            ${tk.plan?`<span>📁 ${tk.plan}</span>`:''}
+          </div>
+        </div>
+      </div>`;
+    }).join('');
   }
-  return dates;
+
+  renderReportTasksPreview();
 }
 
-function getDayOfWeek(dateStr){
-  const days=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-  const d=new Date(dateStr+'T00:00:00');
-  return days[d.getDay()];
+function toggleReportTask(id){
+  if(!curReport.reportTasks)curReport.reportTasks=[];
+  const idx=curReport.reportTasks.indexOf(id);
+  if(idx>=0)curReport.reportTasks.splice(idx,1);
+  else curReport.reportTasks.push(id);
+  sv();
+  renderReportTaskPicker();
 }
 
-function renderDailyTasks(){
-  const trip=S.trips.find(t=>t.id===curTrip);
-  if(!trip)return;
-  const body=document.getElementById('daily-tasks-body');
-  if(!body)return;
+function selectAllReportTasks(){
+  if(!curReport)return;
+  curReport.reportTasks=S.tasks.map(t=>t.id);
+  sv();renderReportTaskPicker();
+}
 
-  const tripDates=getDatesInRange(trip.date, trip.dateEnd||trip.date);
+function clearAllReportTasks(){
+  if(!curReport)return;
+  curReport.reportTasks=[];
+  sv();renderReportTaskPicker();
+}
 
-  // Get tasks linked to this trip OR falling within trip dates (work category)
-  const linkedTasks=S.tasks.filter(tk=>
-    tk.tripId===curTrip ||
-    (tk.category==='work' && tk.dateStart && tripDates.includes(tk.dateStart))
-  );
+function saveReportTaskNote(id){
+  if(!curReport)return;
+  if(!curReport.reportTaskNotes)curReport.reportTaskNotes={};
+  const el=document.getElementById('rtn-'+id);
+  if(el){curReport.reportTaskNotes[id]=el.value;sv();svAndSync('report_task_note');}
+}
 
-  // Get tasks in trip date range (any category)
-  const allTripTasks=S.tasks.filter(tk=>{
-    const dS=tk.dateStart||tk.date||'';
-    return dS && tripDates.includes(dS);
+function renderReportTasksPreview(){
+  const preview=document.getElementById('report-tasks-preview');
+  const taskList=document.getElementById('report-tasks-list');
+  const countEl=document.getElementById('selected-task-count');
+  if(!preview||!taskList)return;
+
+  const selected=(curReport.reportTasks||[]);
+  if(countEl)countEl.textContent=selected.length;
+
+  if(!selected.length){
+    preview.style.display='none';
+    return;
+  }
+  preview.style.display='';
+
+  const catCfg=id=>({work:{icon:'🔧',col:'var(--gd)',cls:'work'},leave:{icon:'🌴',col:'#92400E',cls:'leave'},travel:{icon:'✈️',col:'#1E40AF',cls:'travel'}}[id]||{icon:'📋',col:'var(--g600)',cls:''});
+
+  // Group by date
+  const tasks=selected.map(id=>S.tasks.find(t=>t.id===id)).filter(Boolean);
+  tasks.sort((a,b)=>(a.dateStart||a.date||'').localeCompare(b.dateStart||b.date||'')||a.title.localeCompare(b.title));
+
+  // Group into date buckets
+  const byDate={};
+  tasks.forEach(tk=>{
+    const d=tk.dateStart||tk.date||'(No date)';
+    if(!byDate[d])byDate[d]=[];
+    byDate[d].push(tk);
   });
-
-  // Merge and deduplicate
-  const allIds=new Set();
-  const tasksByDate={};
-  [...linkedTasks,...allTripTasks].forEach(tk=>{
-    if(allIds.has(tk.id))return;
-    allIds.add(tk.id);
-    const d=tk.dateStart||tk.date||trip.date;
-    if(!tasksByDate[d])tasksByDate[d]=[];
-    tasksByDate[d].push(tk);
-  });
-
-  // Init report daily notes if not exist
-  if(!curReport.dailyNotes)curReport.dailyNotes={};
-
-  const totalLinked=allIds.size;
 
   let html='';
-
-  if(!tripDates.length){
-    html='<div class="no-trip-tasks"><div style="font-size:32px;margin-bottom:8px;">📅</div><div style="font-size:13px;color:var(--g500);">No dates set for this trip.</div></div>';
-    body.innerHTML=html;return;
-  }
-
-  tripDates.forEach(dateStr=>{
-    const dayTasks=tasksByDate[dateStr]||[];
-    const doneCount=dayTasks.filter(t=>t.status==='done').length;
-    const dow=getDayOfWeek(dateStr);
-    const note=curReport.dailyNotes[dateStr]||'';
-
-    html+=`<div class="day-block">
-      <div class="day-block-header">
-        <div>
-          <div class="day-block-date">${dow}, ${fmtDate(dateStr)}</div>
-          <div class="day-block-sub">${dayTasks.length} task${dayTasks.length!==1?'s':''} planned</div>
-        </div>
-        ${dayTasks.length?`<span class="day-block-badge">${doneCount}/${dayTasks.length} done</span>`:''}
-      </div>`;
-
-    if(dayTasks.length){
-      dayTasks.forEach(tk=>{
-        const catCfg={work:{icon:'🔧',col:'var(--gd)'},leave:{icon:'🌴',col:'#92400E'},travel:{icon:'✈️',col:'#1E40AF'}}[tk.category||'work']||{icon:'📋',col:'var(--g600)'};
-        const statusIcon=tk.status==='done'?'✓':tk.status==='in_progress'?'◑':'○';
-        const statusClass=tk.status==='done'?'done':tk.status==='in_progress'?'in_progress':'';
-        const timeStr=tk.timeStart?(tk.timeEnd?`${tk.timeStart} – ${tk.timeEnd}`:tk.timeStart):'';
-        const dur=calcDuration(tk);
-        html+=`<div class="day-task-row">
-          <button class="day-task-check ${statusClass}" onclick="cycleDayTaskStatus('${tk.id}')" title="Tap to cycle status">${statusIcon}</button>
-          <div class="day-task-info">
-            <div class="day-task-title" style="${tk.status==='done'?'text-decoration:line-through;color:var(--g400);':''}">${tk.title}</div>
-            <div class="day-task-meta">
-              ${timeStr?`<span>⏰ ${timeStr}</span>`:''}
-              ${dur?`<span>⏱ ${dur}</span>`:''}
-              ${tk.machine?`<span>🔩 ${tk.machine}</span>`:''}
-              ${tk.plan?`<span>📁 ${tk.plan}</span>`:''}
-              <span style="color:${catCfg.col};">${catCfg.icon} ${(tk.category||'work').charAt(0).toUpperCase()+(tk.category||'work').slice(1)}</span>
-            </div>
-            ${tk.checklist&&tk.checklist.length?`
-            <div style="margin-top:5px;">
-              <div style="height:3px;background:var(--g200);border-radius:2px;overflow:hidden;max-width:120px;">
-                <div style="height:100%;background:var(--green);border-radius:2px;width:${Math.round((tk.checklist.filter(c=>c.done).length/tk.checklist.length)*100)}%;"></div>
-              </div>
-              <div style="font-size:10px;color:var(--g500);margin-top:2px;">${tk.checklist.filter(c=>c.done).length}/${tk.checklist.length} items</div>
-            </div>`:''}
-          </div>
-        </div>`;
-      });
-    } else {
-      html+=`<div style="padding:12px 14px;font-size:12px;color:var(--g400);font-style:italic;">No tasks scheduled for this day.</div>`;
+  Object.entries(byDate).forEach(([dateKey,dayTasks])=>{
+    if(dateKey!=='(No date)'){
+      html+=`<div style="font-size:11px;font-weight:700;color:#00843D;letter-spacing:0.05em;padding:8px 0 4px;border-top:1px solid var(--g200);margin-top:4px;">${fmtDate(dateKey)}</div>`;
     }
-
-    // Daily notes / remarks area
-    html+=`<div style="padding:8px 14px 12px;">
-      <div style="font-size:11px;font-weight:600;color:var(--g500);margin-bottom:4px;">Daily notes / remarks</div>
-      <textarea class="day-task-notes" id="dnote-${dateStr}" placeholder="What was done today? Any issues, observations…" onchange="saveDailyNote('${dateStr}')" rows="2">${note}</textarea>
-    </div>`;
-
-    html+=`<button class="day-add-btn" onclick="openNewTaskForDate('${dateStr}')">
-      ＋ Add task for ${dow}
-    </button>`;
-
-    html+='</div>';
-  });
-
-  // Tasks linked to trip but outside date range
-  const extraTasks=linkedTasks.filter(tk=>{
-    const d=tk.dateStart||tk.date||'';
-    return d && !tripDates.includes(d) && tk.tripId===curTrip;
-  });
-  if(extraTasks.length){
-    html+=`<div class="card" style="margin-top:4px;">
-      <div style="font-size:11px;font-weight:600;color:var(--g500);margin-bottom:8px;">OTHER LINKED TASKS (outside trip dates)</div>
-      ${extraTasks.map(tk=>`
-        <div class="day-task-row" style="padding:8px 0;border-bottom:1px solid var(--g100);">
-          <button class="day-task-check ${tk.status==='done'?'done':tk.status==='in_progress'?'in_progress':''}" onclick="cycleDayTaskStatus('${tk.id}')">${tk.status==='done'?'✓':tk.status==='in_progress'?'◑':'○'}</button>
-          <div class="day-task-info">
-            <div class="day-task-title">${tk.title}</div>
-            <div class="day-task-meta"><span>📅 ${fmtDate(tk.dateStart||tk.date||'')}</span></div>
+    dayTasks.forEach(tk=>{
+      const cc=catCfg(tk.category||'work');
+      const note=(curReport.reportTaskNotes||{})[tk.id]||'';
+      const dur=calcDuration(tk);
+      const timeStr=tk.timeStart?(tk.timeEnd?`${tk.timeStart} – ${tk.timeEnd}`:tk.timeStart):'';
+      const statusIcon=tk.status==='done'?'✅':tk.status==='in_progress'?'🔄':'⏳';
+      html+=`<div class="rpt-task-card ${cc.cls}">
+        <div class="rpt-task-body">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
+            <div class="rpt-task-title">${statusIcon} ${tk.title}</div>
+            <button onclick="toggleReportTask('${tk.id}')" style="flex-shrink:0;width:20px;height:20px;border-radius:50%;border:none;background:var(--rl);color:var(--red);cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;">×</button>
           </div>
-        </div>`).join('')}
-    </div>`;
-  }
+          <div class="rpt-task-meta">
+            ${timeStr?`<span>⏰ ${timeStr}</span>`:''}
+            ${dur?`<span>⏱ ${dur}</span>`:''}
+            <span style="color:${cc.col};">${cc.icon} ${tk.category||'work'}</span>
+            ${tk.machine?`<span>🔩 ${tk.machine}</span>`:''}
+            ${tk.plan?`<span>📁 ${tk.plan}</span>`:''}
+            ${tk.priority?`<span style="color:${tk.priority==='high'?'var(--red)':tk.priority==='critical'?'var(--purple)':'var(--g500)'};">▲ ${tk.priority}</span>`:''}
+          </div>
+          ${tk.checklist&&tk.checklist.length?`
+          <div style="display:flex;align-items:center;gap:6px;margin-top:6px;">
+            <div style="flex:1;height:3px;background:var(--g200);border-radius:2px;overflow:hidden;">
+              <div style="height:100%;background:var(--green);width:${Math.round((tk.checklist.filter(c=>c.done).length/tk.checklist.length)*100)}%;border-radius:2px;"></div>
+            </div>
+            <span style="font-size:10px;color:var(--g500);">${tk.checklist.filter(c=>c.done).length}/${tk.checklist.length}</span>
+          </div>`:''}
+          <textarea class="rpt-task-notes" id="rtn-${tk.id}" placeholder="Add work notes for this task in the report…" onchange="saveReportTaskNote('${tk.id}')" rows="2">${note}</textarea>
+        </div>
+      </div>`;
+    });
+  });
 
-  if(!totalLinked && !tripDates.some(d=>tasksByDate[d])){
-    html=`<div class="no-trip-tasks">
-      <div style="font-size:36px;margin-bottom:10px;">📋</div>
-      <div style="font-size:14px;font-weight:500;color:var(--g700);margin-bottom:6px;">No tasks for this trip yet</div>
-      <div style="font-size:12px;color:var(--g500);margin-bottom:14px;line-height:1.5;">Tasks are shown here when:<br>• Their date falls within the trip dates<br>• Or they are linked to this trip</div>
-      ${tripDates.map(d=>`<button class="day-add-btn" style="justify-content:center;border:1px dashed var(--g300);border-radius:var(--rs);margin-bottom:6px;" onclick="openNewTaskForDate('${d}')">＋ Add task for ${getDayOfWeek(d)}, ${fmtDate(d)}</button>`).join('')}
-    </div>`+html;
-  }
-
-  body.innerHTML=html;
-}
-
-function cycleDayTaskStatus(id){
-  const tk=S.tasks.find(t=>t.id===id);if(!tk)return;
-  const cycle={pending:'in_progress',in_progress:'done',done:'pending'};
-  tk.status=cycle[tk.status]||'pending';
-  tk.updatedAt=new Date().toISOString();
-  sv();renderDailyTasks();svAndSync('day_task_status');
-}
-
-function saveDailyNote(dateStr){
-  if(!curReport)return;
-  if(!curReport.dailyNotes)curReport.dailyNotes={};
-  const el=document.getElementById('dnote-'+dateStr);
-  if(el)curReport.dailyNotes[dateStr]=el.value;
-  sv();svAndSync('daily_note');
-}
-
-function openNewTaskForDate(dateStr){
-  openNewTaskModal(dateStr,'work');
-  // Pre-link to current trip
-  setTimeout(()=>{
-    populateTaskTripSelect();
-    const tripSel=document.getElementById('task-trip');
-    if(tripSel&&curTrip)tripSel.value=curTrip;
-  },100);
+  taskList.innerHTML=html;
 }
 
 // ═══════ CHECKLIST ═══════
@@ -2300,27 +2288,34 @@ function buildPDFPreview(){
       ${r.team&&r.team.length?r.team.map(m=>pr(m.name,m.role||'—')).join(''):'<div style="font-size:12px;color:var(--g500);">None</div>'}
     </div>
     <div class="ps">${(()=>{
-      const trip2=S.trips.find(t=>t.id===curTrip);
-      if(!trip2)return'';
-      const dates=getDatesInRange(trip2.date,trip2.dateEnd||trip2.date);
-      if(!dates.length)return'';
-      let out='<div class="pst">Daily Plan</div>';
-      dates.forEach(ds=>{
-        const dayTks=S.tasks.filter(tk=>{
-          const d=tk.dateStart||tk.date||'';
-          return d===ds&&(tk.tripId===curTrip||(tk.category==='work'));
+      const sel=(r.reportTasks||[]);
+      if(!sel.length)return'<div class="pst" style="color:var(--g400);">Tasks (none selected)</div>';
+      const tasks=sel.map(id=>S.tasks.find(t=>t.id===id)).filter(Boolean).sort((a,b)=>(a.dateStart||a.date||'').localeCompare(b.dateStart||b.date||'')||a.title.localeCompare(b.title));
+      const catIcon=c=>({work:'🔧',leave:'🌴',travel:'✈️'}[c]||'📋');
+      const statusIcon=s=>s==='done'?'✅':s==='in_progress'?'🔄':'⏳';
+      // Group by date
+      const byDate={};
+      tasks.forEach(tk=>{const d=tk.dateStart||tk.date||'';if(!byDate[d])byDate[d]=[];byDate[d].push(tk);});
+      let out=`<div class="pst">Tasks in Report (${tasks.length})</div>`;
+      Object.entries(byDate).forEach(([dateKey,dayTasks])=>{
+        if(dateKey)out+=`<div style="font-size:11px;font-weight:700;color:#00843D;padding:4px 0;border-bottom:1px solid #e8f5ee;margin-bottom:4px;">${fmtDate(dateKey)}</div>`;
+        dayTasks.forEach(tk=>{
+          const note=(r.reportTaskNotes||{})[tk.id]||'';
+          const dur=calcDuration(tk);
+          const timeStr=tk.timeStart?(tk.timeEnd?`${tk.timeStart}–${tk.timeEnd}`:tk.timeStart):'';
+          out+=`<div style="margin-bottom:8px;padding:6px 8px;background:var(--g50);border-radius:6px;border-left:3px solid ${tk.category==='leave'?'var(--amber)':tk.category==='travel'?'var(--blue)':'var(--green)'};">
+            <div style="font-size:12px;font-weight:500;">${statusIcon(tk.status)} ${tk.title}</div>
+            <div style="font-size:11px;color:var(--g500);margin-top:2px;display:flex;flex-wrap:wrap;gap:6px;">
+              ${timeStr?`<span>⏰ ${timeStr}</span>`:''}
+              ${dur?`<span>⏱ ${dur}</span>`:''}
+              <span>${catIcon(tk.category||'work')} ${tk.category||'work'}</span>
+              ${tk.machine?`<span>🔩 ${tk.machine}</span>`:''}
+              ${tk.plan?`<span>📁 ${tk.plan}</span>`:''}
+              ${tk.checklist&&tk.checklist.length?`<span>${tk.checklist.filter(c=>c.done).length}/${tk.checklist.length} items</span>`:''}
+            </div>
+            ${note?`<div style="font-size:11px;color:var(--g600);margin-top:4px;font-style:italic;">${note}</div>`:''}
+          </div>`;
         });
-        const note=(r.dailyNotes&&r.dailyNotes[ds])||'';
-        out+=`<div style="margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid var(--g200);">
-          <div style="font-size:12px;font-weight:600;color:#00843D;margin-bottom:4px;">${getDayOfWeek(ds)} · ${fmtDate(ds)}</div>
-          ${dayTks.length?dayTks.map(tk=>`<div style="display:flex;align-items:center;gap:6px;padding:2px 0;font-size:12px;">
-            <span style="width:14px;height:14px;border-radius:50%;border:1px solid ${tk.status==='done'?'var(--green)':'var(--g300)'};background:${tk.status==='done'?'var(--green)':'#fff'};color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:8px;flex-shrink:0;">${tk.status==='done'?'✓':''}</span>
-            <span style="${tk.status==='done'?'text-decoration:line-through;color:var(--g400);':''}">${tk.title}</span>
-            ${tk.timeStart?`<span style="color:var(--g500);font-size:10px;">${tk.timeStart}</span>`:''}
-            <span class="task-link-chip">${(tk.category||'work')}</span>
-          </div>`).join(''):'<div style="font-size:11px;color:var(--g400);font-style:italic;">No tasks scheduled.</div>'}
-          ${note?`<div style="margin-top:5px;padding:5px 8px;background:var(--g100);border-radius:5px;font-size:11px;color:var(--g600);font-style:italic;">${note}</div>`:''}
-        </div>`;
       });
       return out;
     })()}</div>
@@ -2359,62 +2354,59 @@ function exportPDF(){
   r.issues.forEach(is=>{const sc=is.severity==='critical'?[91,33,182]:is.severity==='high'?[226,75,74]:is.severity==='medium'?[245,158,11]:[55,138,221];doc.setFontSize(9);doc.setFont('helvetica','bold');doc.setTextColor(...sc);doc.text(`[${is.severity.toUpperCase()}]`,mg+2,y);doc.setTextColor(33,37,41);doc.text(is.title,mg+22,y);y+=5;if(is.description){doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(80,80,80);const lines=doc.splitTextToSize(is.description,W-mg*2-6);doc.text(lines,mg+4,y);y+=lines.length*4+2;}if(is.action){doc.setFont('helvetica','italic');doc.setFontSize(8);doc.setTextColor(100,100,100);doc.text('→ '+is.action,mg+4,y);y+=5;}if(is.photos&&is.photos.length){is.photos.forEach(ph=>{try{doc.addImage(ph,'JPEG',mg+4,y,35,26);y+=28;}catch(e){}if(y>270){doc.addPage();y=20;}});}if(y>270){doc.addPage();y=20;}});
   if(!r.issues.length){doc.setFontSize(9);doc.text('None.',mg+2,y);y+=5;}ln();
   if(r.team&&r.team.length){sec(`TEAM (${r.team.length})`);r.team.forEach(m=>{doc.setFontSize(9);doc.setFont('helvetica','normal');doc.setTextColor(33,37,41);doc.text('• '+m.name+(m.role?' — '+m.role:''),mg+2,y);doc.setFont('helvetica','bold');doc.setTextColor(m.signoff==='yes'?15:100,m.signoff==='yes'?110:100,m.signoff==='yes'?86:100);doc.text(m.signoff==='yes'?'SIGNOFF':'ATTEND',160,y);doc.setTextColor(33,37,41);y+=5;if(y>270){doc.addPage();y=20;}});ln();}
-  // ── DAILY PLAN SECTION ──
-  const trip2=S.trips.find(t=>t.id===curTrip);
-  if(trip2){
-    const tripDates=getDatesInRange(trip2.date,trip2.dateEnd||trip2.date);
-    if(tripDates.length){
-      sec('DAILY PLAN');
-      tripDates.forEach(ds=>{
-        // Day header
-        const dow=getDayOfWeek(ds);
+  // ── TASKS SECTION ──
+  const rptTaskIds=r.reportTasks||[];
+  if(rptTaskIds.length){
+    sec(`TASKS IN REPORT  (${rptTaskIds.length})`);
+    const rptTasks=rptTaskIds.map(id=>S.tasks.find(t=>t.id===id)).filter(Boolean)
+      .sort((a,b)=>(a.dateStart||a.date||'').localeCompare(b.dateStart||b.date||'')||a.title.localeCompare(b.title));
+    // Group by date
+    const byDate={};
+    rptTasks.forEach(tk=>{const d=tk.dateStart||tk.date||'';if(!byDate[d])byDate[d]=[];byDate[d].push(tk);});
+    const catIcon=c=>({work:'[W]',leave:'[L]',travel:'[T]'}[c]||'[ ]');
+    Object.entries(byDate).forEach(([dateKey,dayTasks])=>{
+      if(dateKey){
         doc.setFillColor(0,132,61);doc.rect(mg,y-3,W-mg*2,7,'F');
         doc.setTextColor(255,255,255);doc.setFontSize(9);doc.setFont('helvetica','bold');
-        doc.text(`${dow}  ·  ${fmtDate(ds)}`,mg+3,y+1);
+        doc.text(fmtDate(dateKey),mg+3,y+1);
         doc.setTextColor(33,37,41);doc.setFont('helvetica','normal');y+=9;
         if(y>265){doc.addPage();y=20;}
-        // Tasks for this day
-        const dayTks=S.tasks.filter(tk=>{
-          const d=tk.dateStart||tk.date||'';
-          return d===ds&&(tk.tripId===curTrip||tk.category==='work');
-        });
-        if(dayTks.length){
-          dayTks.forEach(tk=>{
-            const sym=tk.status==='done'?'[✓]':tk.status==='in_progress'?'[►]':'[ ]';
-            const timeStr=tk.timeStart?(tk.timeEnd?` ${tk.timeStart}–${tk.timeEnd}`:` ${tk.timeStart}`):'';
-            const dur=calcDuration(tk);
-            const line=`${sym} ${tk.title}${timeStr}${dur?' ('+dur+')':''}`;
-            doc.setFontSize(9);doc.setFont('helvetica','normal');doc.setTextColor(33,37,41);
-            const tLines=doc.splitTextToSize(line,W-mg*2-4);
-            doc.text(tLines,mg+2,y);y+=tLines.length*5;
-            if(tk.machine||tk.plan){
-              doc.setFontSize(7.5);doc.setTextColor(130,130,130);
-              const meta=[tk.machine?'Machine: '+tk.machine:'',tk.plan?'Plan: '+tk.plan:''].filter(Boolean).join('  ·  ');
-              doc.text(meta,mg+6,y);y+=4;
-            }
-            if(tk.checklist&&tk.checklist.length){
-              const done=tk.checklist.filter(c=>c.done).length;
-              doc.setFontSize(7.5);doc.setTextColor(100,100,100);
-              doc.text(`   Checklist: ${done}/${tk.checklist.length} items`,mg+6,y);y+=4;
-            }
-            if(y>265){doc.addPage();y=20;}
-          });
-        } else {
-          doc.setFontSize(8.5);doc.setTextColor(170,170,170);doc.setFont('helvetica','italic');
-          doc.text('   No tasks scheduled.',mg+2,y);y+=5;
+      }
+      dayTasks.forEach((tk,ti)=>{
+        const sym=tk.status==='done'?'[✓]':tk.status==='in_progress'?'[►]':'[ ]';
+        const timeStr=tk.timeStart?(tk.timeEnd?` ${tk.timeStart}–${tk.timeEnd}`:` ${tk.timeStart}`):'';
+        const dur=calcDuration(tk);
+        const cat=catIcon(tk.category||'work');
+        const line=`${sym} ${cat} ${tk.title}${timeStr}${dur?' ('+dur+')':''}`;
+        doc.setFontSize(9);doc.setFont('helvetica','normal');doc.setTextColor(33,37,41);
+        const tLines=doc.splitTextToSize(line,W-mg*2-4);
+        doc.text(tLines,mg+2,y);y+=tLines.length*5;
+        if(tk.desc){
+          doc.setFontSize(8);doc.setTextColor(100,100,100);
+          const descLines=doc.splitTextToSize(tk.desc,W-mg*2-10);
+          doc.text(descLines,mg+6,y);y+=descLines.length*4+1;
+        }
+        const meta=[tk.machine?'Machine: '+tk.machine:'',tk.plan?'Plan: '+tk.plan:'',tk.priority?'Priority: '+tk.priority:''].filter(Boolean).join('  ·  ');
+        if(meta){doc.setFontSize(7.5);doc.setTextColor(140,140,140);doc.text(meta,mg+6,y);y+=4;}
+        if(tk.checklist&&tk.checklist.length){
+          const done=tk.checklist.filter(c=>c.done).length;
+          const pct=Math.round((done/tk.checklist.length)*100);
+          doc.setFontSize(7.5);doc.setTextColor(100,100,100);
+          doc.text(`Checklist: ${done}/${tk.checklist.length} items (${pct}%)`,mg+6,y);y+=4;
+        }
+        const note=(r.reportTaskNotes||{})[tk.id];
+        if(note){
+          doc.setFontSize(8);doc.setTextColor(80,80,80);doc.setFont('helvetica','italic');
+          const nLines=doc.splitTextToSize('Notes: '+note,W-mg*2-8);
+          doc.text(nLines,mg+4,y);y+=nLines.length*4+1;
           doc.setFont('helvetica','normal');
         }
-        // Daily note
-        const note=r.dailyNotes&&r.dailyNotes[ds];
-        if(note){
-          doc.setFontSize(8);doc.setTextColor(90,90,90);doc.setFont('helvetica','italic');
-          const noteLines=doc.splitTextToSize('Notes: '+note,W-mg*2-8);
-          doc.text(noteLines,mg+4,y);y+=noteLines.length*4+2;
-        }
-        y+=3;if(y>265){doc.addPage();y=20;}
+        y+=2;
+        if(y>265){doc.addPage();y=20;}
       });
-      ln();
-    }
+      y+=2;
+    });
+    ln();
   }
   sec('SIGN-OFF');kv2('Result',r.signoff.result||'Completed');if(r.signoff.summary)kv2('Summary',r.signoff.summary);if(r.signoff.remarks)kv2('Remarks',r.signoff.remarks);y+=4;
   doc.setDrawColor(200,200,200);doc.rect(mg,y,W-mg*2,34);doc.setFontSize(8);doc.setTextColor(100,100,100);doc.text('Signature:',mg+4,y+7);doc.setFont('helvetica','bold');doc.setTextColor(33,37,41);doc.text(p.name||'Engineer',mg+4,y+29);doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(100,100,100);doc.text(new Date().toLocaleDateString('en-GB'),mg+4,y+33);
