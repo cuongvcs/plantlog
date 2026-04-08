@@ -2334,13 +2334,16 @@ function exportPDF(){
   const W=210,mg=16;let y=20;
   doc.setFillColor(0,132,61);doc.rect(0,0,W,30,'F');
   const reportTitle=(document.getElementById('report-name-input')&&document.getElementById('report-name-input').value.trim())||`Plant Visit Report — ${trip.plant}`;
-  doc.setTextColor(255,255,255);doc.setFontSize(15);doc.setFont('helvetica','bold');
+  // Header: title (large) + date only
+  doc.setTextColor(255,255,255);
   const titleLines=doc.splitTextToSize(reportTitle,W-mg*2);
-  if(titleLines.length>1){doc.setFontSize(11);}
-  doc.text(titleLines,mg,titleLines.length>1?10:13);
-  const headerY=titleLines.length>1?10+titleLines.length*5:20;
-  doc.setFontSize(9);doc.setFont('helvetica','normal');doc.text(`${trip.plant}  ·  ${fmtDate(trip.date)}`,mg,headerY);
-  doc.text(`${p.name||'Engineer'}${p.title?' · '+p.title:''}${p.company?' · '+p.company:''}`,mg,headerY+6);y=38;
+  const bigFont=titleLines.length>1?12:15;
+  doc.setFontSize(bigFont);doc.setFont('helvetica','bold');
+  doc.text(titleLines,mg,titleLines.length>1?10:14);
+  const headerY=titleLines.length>1?10+titleLines.length*(bigFont*0.4):22;
+  doc.setFontSize(9);doc.setFont('helvetica','normal');
+  doc.text(fmtDate(trip.date),mg,Math.min(headerY,26));
+  y=36;
   const sec=title=>{doc.setFillColor(241,243,245);doc.rect(mg,y-4,W-mg*2,8,'F');doc.setTextColor(0,132,61);doc.setFontSize(8);doc.setFont('helvetica','bold');doc.text(title,mg+2,y+1);doc.setTextColor(33,37,41);y+=8;};
   const kv2=(l,v)=>{doc.setFontSize(9);doc.setFont('helvetica','normal');doc.setTextColor(100,100,100);doc.text(l,mg,y);doc.setTextColor(33,37,41);doc.setFont('helvetica','bold');const lines=doc.splitTextToSize(String(v),100);doc.text(lines,110,y);doc.setFont('helvetica','normal');y+=lines.length*5+1;if(y>270){doc.addPage();y=20;}};
   const ln=()=>{doc.setDrawColor(220,220,220);doc.line(mg,y,W-mg,y);y+=4;};
@@ -2357,54 +2360,77 @@ function exportPDF(){
   // ── TASKS SECTION ──
   const rptTaskIds=r.reportTasks||[];
   if(rptTaskIds.length){
-    sec(`TASKS IN REPORT  (${rptTaskIds.length})`);
+    sec(`TASKS IN REPORT (${rptTaskIds.length})`);
     const rptTasks=rptTaskIds.map(id=>S.tasks.find(t=>t.id===id)).filter(Boolean)
       .sort((a,b)=>(a.dateStart||a.date||'').localeCompare(b.dateStart||b.date||'')||a.title.localeCompare(b.title));
     // Group by date
     const byDate={};
     rptTasks.forEach(tk=>{const d=tk.dateStart||tk.date||'';if(!byDate[d])byDate[d]=[];byDate[d].push(tk);});
-    const catIcon=c=>({work:'[W]',leave:'[L]',travel:'[T]'}[c]||'[ ]');
+
     Object.entries(byDate).forEach(([dateKey,dayTasks])=>{
+      // Date sub-header — same grey background style as section header but smaller
       if(dateKey){
-        doc.setFillColor(0,132,61);doc.rect(mg,y-3,W-mg*2,7,'F');
-        doc.setTextColor(255,255,255);doc.setFontSize(9);doc.setFont('helvetica','bold');
+        doc.setFillColor(228,240,232);
+        doc.rect(mg,y-3,W-mg*2,7,'F');
+        doc.setTextColor(0,100,50);
+        doc.setFontSize(8);doc.setFont('helvetica','bold');
         doc.text(fmtDate(dateKey),mg+3,y+1);
-        doc.setTextColor(33,37,41);doc.setFont('helvetica','normal');y+=9;
+        doc.setTextColor(33,37,41);doc.setFont('helvetica','normal');
+        y+=8;
         if(y>265){doc.addPage();y=20;}
       }
-      dayTasks.forEach((tk,ti)=>{
-        const sym=tk.status==='done'?'[✓]':tk.status==='in_progress'?'[►]':'[ ]';
-        const timeStr=tk.timeStart?(tk.timeEnd?` ${tk.timeStart}–${tk.timeEnd}`:` ${tk.timeStart}`):'';
+
+      dayTasks.forEach(tk=>{
+        // Task title — bullet, same size/weight as checklist items
+        const timeStr=tk.timeStart?(tk.timeEnd?` (${tk.timeStart}–${tk.timeEnd})`:` (${tk.timeStart})`):'';
         const dur=calcDuration(tk);
-        const cat=catIcon(tk.category||'work');
-        const line=`${sym} ${cat} ${tk.title}${timeStr}${dur?' ('+dur+')':''}`;
+        const statusLabel=tk.status==='done'?' — Done':tk.status==='in_progress'?' — In Progress':'';
+        const titleLine=`• ${tk.title}${timeStr}${dur?' '+dur:''}${statusLabel}`;
         doc.setFontSize(9);doc.setFont('helvetica','normal');doc.setTextColor(33,37,41);
-        const tLines=doc.splitTextToSize(line,W-mg*2-4);
-        doc.text(tLines,mg+2,y);y+=tLines.length*5;
+        const tLines=doc.splitTextToSize(titleLine,W-mg*2-4);
+        doc.text(tLines,mg+2,y);
+        y+=tLines.length*5;
+
+        // Description — same style as issue description
         if(tk.desc){
-          doc.setFontSize(8);doc.setTextColor(100,100,100);
-          const descLines=doc.splitTextToSize(tk.desc,W-mg*2-10);
-          doc.text(descLines,mg+6,y);y+=descLines.length*4+1;
+          doc.setFontSize(8);doc.setTextColor(80,80,80);doc.setFont('helvetica','normal');
+          const descLines=doc.splitTextToSize(tk.desc,W-mg*2-8);
+          doc.text(descLines,mg+6,y);
+          y+=descLines.length*4+1;
         }
-        const meta=[tk.machine?'Machine: '+tk.machine:'',tk.plan?'Plan: '+tk.plan:'',tk.priority?'Priority: '+tk.priority:''].filter(Boolean).join('  ·  ');
-        if(meta){doc.setFontSize(7.5);doc.setTextColor(140,140,140);doc.text(meta,mg+6,y);y+=4;}
+
+        // Meta line — machine / plan / priority, same 8pt italic style as issue action
+        const metaParts=[];
+        if(tk.machine)metaParts.push('Machine: '+tk.machine);
+        if(tk.plan)metaParts.push('Plan: '+tk.plan);
+        if(tk.priority&&tk.priority!=='medium')metaParts.push('Priority: '+tk.priority);
+        if(metaParts.length){
+          doc.setFontSize(8);doc.setTextColor(100,100,100);doc.setFont('helvetica','italic');
+          doc.text(metaParts.join('  ·  '),mg+6,y);
+          y+=4;doc.setFont('helvetica','normal');
+        }
+
+        // Checklist progress
         if(tk.checklist&&tk.checklist.length){
           const done=tk.checklist.filter(c=>c.done).length;
-          const pct=Math.round((done/tk.checklist.length)*100);
-          doc.setFontSize(7.5);doc.setTextColor(100,100,100);
-          doc.text(`Checklist: ${done}/${tk.checklist.length} items (${pct}%)`,mg+6,y);y+=4;
+          doc.setFontSize(8);doc.setTextColor(100,100,100);
+          doc.text(`Checklist: ${done}/${tk.checklist.length} items`,mg+6,y);
+          y+=4;
         }
+
+        // Work notes from report
         const note=(r.reportTaskNotes||{})[tk.id];
         if(note){
           doc.setFontSize(8);doc.setTextColor(80,80,80);doc.setFont('helvetica','italic');
           const nLines=doc.splitTextToSize('Notes: '+note,W-mg*2-8);
-          doc.text(nLines,mg+4,y);y+=nLines.length*4+1;
+          doc.text(nLines,mg+6,y);
+          y+=nLines.length*4+1;
           doc.setFont('helvetica','normal');
         }
-        y+=2;
+
+        y+=3;
         if(y>265){doc.addPage();y=20;}
       });
-      y+=2;
     });
     ln();
   }
