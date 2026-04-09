@@ -476,6 +476,7 @@ html,body{height:100%;font-family:var(--font);background:#f0f2f0;color:var(--g90
     <div class="card" id="trip-detail-card"></div>
     <div class="brow">
       <button class="btn btn-d btn-sm" onclick="deleteTripCurrent()">🗑 <span data-t="delete">Delete</span></button>
+      <button class="btn btn-o btn-sm" onclick="openEditTrip()">✏️ Edit</button>
       <button class="btn btn-p" style="flex:1;" onclick="openReport()">📋 <span data-t="openReport">Open Report</span></button>
     </div>
   </div>
@@ -736,7 +737,11 @@ html,body{height:100%;font-family:var(--font);background:#f0f2f0;color:var(--g90
 
 <!-- ═══════════════ MODALS ═══════════════ -->
 <div id="modal-new-trip" class="mo"><div class="modal">
-  <div class="mh"></div><div class="mt" data-t="newTrip">New Trip</div>
+  <div class="mh"></div>
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+    <div class="mt" style="margin-bottom:0;" id="trip-modal-title">New Trip</div>
+    <div style="font-size:11px;color:var(--g500);" id="trip-edit-badge"></div>
+  </div>
   <div class="fg"><label class="fl" data-t="plantName">Plant name *</label><input class="fi" id="nt-plant" placeholder="e.g. Nhà máy ABC"></div>
   <div class="fg"><label class="fl" data-t="location">Location</label><input class="fi" id="nt-location" placeholder="e.g. Bình Dương, Vietnam"></div>
   <div class="frow">
@@ -748,7 +753,7 @@ html,body{height:100%;font-family:var(--font);background:#f0f2f0;color:var(--g90
   <div class="fg"><label class="fl" data-t="transport">Transport</label>
     <select class="fsel" id="nt-transport"><option value="">Select...</option><option>Company vehicle</option><option>Flight + rental car</option><option>Train</option><option>Bus</option><option>Own vehicle</option></select>
   </div>
-  <div class="brow"><button class="btn btn-o" onclick="closeModal('modal-new-trip')" data-t="cancel">Cancel</button><button class="btn btn-p" style="flex:1;" onclick="saveNewTrip()" data-t="saveTrip">Save trip</button></div>
+  <div class="brow"><button class="btn btn-o" onclick="closeModal('modal-new-trip')" data-t="cancel">Cancel</button><button class="btn btn-p" style="flex:1;" onclick="saveNewTrip()" id="trip-save-btn">Save trip</button></div>
 </div></div>
 
 <div id="modal-new-task" class="mo"><div class="modal">
@@ -885,17 +890,38 @@ html,body{height:100%;font-family:var(--font);background:#f0f2f0;color:var(--g90
 </div></div>
 
 <div id="modal-add-reading" class="mo"><div class="modal">
-  <div class="mh"></div><div class="mt" data-t="addReading">Add reading</div>
-  <div class="fg"><label class="fl" data-t="equipmentName">Equipment *</label><input class="fi" id="rd-name" placeholder="e.g. Pump P-101"></div>
-  <div class="fg"><label class="fl">Tag/ID</label><input class="fi" id="rd-tag" placeholder="P-101" style="font-family:var(--mono);"></div>
-  <div class="frow">
-    <div class="fg"><label class="fl" data-t="value">Value *</label><input class="fi" type="number" id="rd-value" placeholder="0.00"></div>
-    <div class="fg"><label class="fl" data-t="unit">Unit</label><input class="fi" id="rd-unit" placeholder="bar / °C"></div>
+  <div class="mh"></div><div class="mt">Add Reading</div>
+  <!-- Type selector -->
+  <div class="fg">
+    <label class="fl">Reading type</label>
+    <div style="display:flex;gap:8px;">
+      <button id="rd-type-cond" onclick="setReadingType('condition')" style="flex:1;padding:9px;border-radius:var(--rs);border:1.5px solid var(--green);background:var(--gl);color:var(--gd);font-family:var(--font);font-size:13px;font-weight:500;cursor:pointer;">🔍 Condition</button>
+      <button id="rd-type-meas" onclick="setReadingType('measurement')" style="flex:1;padding:9px;border-radius:var(--rs);border:1.5px solid var(--g300);background:#fff;color:var(--g600);font-family:var(--font);font-size:13px;font-weight:500;cursor:pointer;">📏 Measurement</button>
+    </div>
   </div>
-  <div class="fg"><label class="fl" data-t="status">Status</label>
-    <select class="fsel" id="rd-status"><option value="ok" data-t="inSpec">In spec</option><option value="bad" data-t="outOfRange">Out of range</option><option value="na">N/A</option></select>
+  <div class="fg"><label class="fl">Equipment name *</label><input class="fi" id="rd-name" placeholder="e.g. Pump P-101"></div>
+  <div class="fg"><label class="fl">Tag / ID</label><input class="fi" id="rd-tag" placeholder="P-101" style="font-family:var(--mono);"></div>
+  <!-- Condition fields -->
+  <div id="rd-cond-fields">
+    <div class="fg"><label class="fl">Condition</label>
+      <select class="fsel" id="rd-condition">
+        <option value="ok">✅ OK — Normal / Good</option>
+        <option value="notok">❌ Not OK — Abnormal / Defect</option>
+        <option value="other">⚠️ Other — Needs attention</option>
+      </select>
+    </div>
   </div>
-  <div class="fg"><label class="fl" data-t="notes">Notes</label><input class="fi" id="rd-notes" placeholder="..."></div>
+  <!-- Measurement fields -->
+  <div id="rd-meas-fields" style="display:none;">
+    <div class="frow">
+      <div class="fg"><label class="fl">Value *</label><input class="fi" type="number" id="rd-value" placeholder="0.00"></div>
+      <div class="fg"><label class="fl">Unit</label><input class="fi" id="rd-unit" placeholder="bar / °C / rpm"></div>
+    </div>
+    <div class="fg"><label class="fl">Status</label>
+      <select class="fsel" id="rd-status"><option value="ok">In specification</option><option value="bad">Out of range / Abnormal</option><option value="na">N/A</option></select>
+    </div>
+  </div>
+  <div class="fg"><label class="fl">Notes</label><input class="fi" id="rd-notes" placeholder="Optional notes..."></div>
   <div class="brow"><button class="btn btn-o" onclick="closeModal('modal-add-reading')" data-t="cancel">Cancel</button><button class="btn btn-p" style="flex:1;" onclick="addReading()">Add</button></div>
 </div></div>
 
@@ -903,8 +929,18 @@ html,body{height:100%;font-family:var(--font);background:#f0f2f0;color:var(--g90
   <div class="mh"></div><div class="mt" data-t="addIssue">Add issue</div>
   <div class="fg"><label class="fl" data-t="issueTitle">Title *</label><input class="fi" id="is-title" placeholder="Brief description"></div>
   <div class="fg"><label class="fl" data-t="details">Details</label><textarea class="fta" id="is-desc" placeholder="..." style="min-height:60px;"></textarea></div>
-  <div class="fg"><label class="fl" data-t="severity">Severity</label>
-    <select class="fsel" id="is-sev"><option value="low">Low</option><option value="medium" selected>Medium</option><option value="high">High</option><option value="critical">Critical</option></select>
+  <div class="frow">
+    <div class="fg"><label class="fl" data-t="severity">Severity</label>
+      <select class="fsel" id="is-sev"><option value="low">Low</option><option value="medium" selected>Medium</option><option value="high">High</option><option value="critical">Critical</option></select>
+    </div>
+    <div class="fg"><label class="fl">Status</label>
+      <select class="fsel" id="is-istatus">
+        <option value="pending">⏳ Pending</option>
+        <option value="waiting_part">🔧 Waiting part</option>
+        <option value="processing">🔄 Processing</option>
+        <option value="done">✅ Done</option>
+      </select>
+    </div>
   </div>
   <div class="fg"><label class="fl" data-t="recommendedAction">Action</label><input class="fi" id="is-action" placeholder="..."></div>
   <div class="fg"><label class="fl" data-t="photoEvidence">Photos</label>
@@ -1238,6 +1274,7 @@ function openModal(id){
   document.getElementById(id).classList.add('open');
   if(id==='modal-check-templates')renderTemplates();
   if(id==='modal-new-task'){populateTaskTripSelect();populateMachineSelect();populatePlanSelect();}
+  if(id==='modal-add-reading'){rdType='condition';setReadingType('condition');}
 }
 function closeModal(id){document.getElementById(id).classList.remove('open');}
 document.addEventListener('click',e=>{if(e.target.classList.contains('mo'))e.target.classList.remove('open');});
@@ -1300,6 +1337,7 @@ function addNewPlan(){
 }
 let taskCat='all', taskStatusFilter='all';
 let editingTaskId=null;
+let editingTripId=null;
 
 function setTaskCat(cat){
   taskCat=cat;
@@ -1775,12 +1813,35 @@ function saveNewTrip(){
   const plant=document.getElementById('nt-plant').value.trim();
   const date=document.getElementById('nt-date').value;
   if(!plant||!date){showToast('Plant name and date required');return;}
+  const clearForm=()=>{
+    ['nt-plant','nt-location','nt-date','nt-date-end','nt-purpose','nt-contact'].forEach(id=>document.getElementById(id).value='');
+    document.getElementById('nt-transport').value='';
+    document.getElementById('trip-modal-title').textContent='New Trip';
+    document.getElementById('trip-edit-badge').textContent='';
+    document.getElementById('trip-save-btn').textContent='Save trip';
+  };
+  if(editingTripId){
+    const tr=S.trips.find(t=>t.id===editingTripId);
+    if(tr){
+      tr.plant=plant;tr.date=date;
+      tr.dateEnd=document.getElementById('nt-date-end').value||date;
+      tr.location=document.getElementById('nt-location').value;
+      tr.purpose=document.getElementById('nt-purpose').value;
+      tr.contact=document.getElementById('nt-contact').value;
+      tr.transport=document.getElementById('nt-transport').value;
+      tr.updatedAt=new Date().toISOString();
+    }
+    editingTripId=null;
+    sv();closeModal('modal-new-trip');clearForm();
+    showToast('Trip updated ✓');
+    if(curTrip)openTripDetail(curTrip);
+    renderTripList();renderDash();svAndSync('trip_edit');
+    return;
+  }
   const trip={id:'trip_'+Date.now(),plant,date,dateEnd:document.getElementById('nt-date-end').value||date,location:document.getElementById('nt-location').value,purpose:document.getElementById('nt-purpose').value,contact:document.getElementById('nt-contact').value,transport:document.getElementById('nt-transport').value,status:'planned',createdAt:new Date().toISOString()};
   S.trips.push(trip);
-  S.reports[trip.id]={checklist:S.templates.map((tmpl,i)=>({id:'ci'+i+Date.now(),name:tmpl,result:'',note:''})),readings:[],issues:[],team:[...S.defaultTeam.map(m=>({...m,id:'tm'+Date.now()+Math.random()}))],signoff:{summary:'',result:'Completed',remarks:''},signature:''};
-  sv();closeModal('modal-new-trip');
-  ['nt-plant','nt-location','nt-date','nt-date-end','nt-purpose','nt-contact'].forEach(id=>document.getElementById(id).value='');
-  document.getElementById('nt-transport').value='';
+  S.reports[trip.id]={checklist:S.templates.map((tmpl,i)=>({id:'ci'+i+Date.now(),name:tmpl,result:'',note:''})),readings:[],issues:[],team:[...S.defaultTeam.map(m=>({...m,id:'tm'+Date.now()+Math.random()}))],signoff:{summary:'',result:'Completed',remarks:''},signature:'',reportTasks:[],reportTaskNotes:{}};
+  sv();closeModal('modal-new-trip');clearForm();
   showToast(t('saveTrip')+' ✓');renderTripList();renderDash();
   if(Notification.permission==='granted')scheduleNotifications();
   svAndSync('trip');
@@ -1813,6 +1874,22 @@ function openTripDetail(id){
   showScreen('trip-detail');
 }
 function kv(l,v){return `<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--g100);font-size:13px;"><span style="color:var(--g500);">${l}</span><span style="font-weight:500;text-align:right;max-width:60%;">${v}</span></div>`;}
+
+function openEditTrip(){
+  const tr=S.trips.find(t=>t.id===curTrip);if(!tr)return;
+  editingTripId=tr.id;
+  document.getElementById('trip-modal-title').textContent='Edit Trip';
+  document.getElementById('trip-edit-badge').textContent='#'+tr.id.slice(-6);
+  document.getElementById('trip-save-btn').textContent='Update trip';
+  document.getElementById('nt-plant').value=tr.plant||'';
+  document.getElementById('nt-location').value=tr.location||'';
+  document.getElementById('nt-date').value=tr.date||'';
+  document.getElementById('nt-date-end').value=tr.dateEnd||'';
+  document.getElementById('nt-purpose').value=tr.purpose||'';
+  document.getElementById('nt-contact').value=tr.contact||'';
+  document.getElementById('nt-transport').value=tr.transport||'';
+  openModal('modal-new-trip');
+}
 function deleteTripCurrent(){if(!confirm('Delete this trip?'))return;S.trips=S.trips.filter(tr=>tr.id!==curTrip);delete S.reports[curTrip];sv();showScreen('trips');renderTripList();}
 function openReport(){
   const tr=S.trips.find(tr=>tr.id===curTrip);if(!tr)return;
@@ -2027,18 +2104,68 @@ function renderReadings(){
   if(!curReport)return;
   const el=document.getElementById('reading-items');
   if(!curReport.readings.length){el.innerHTML=`<div class="empty" style="padding:16px 0;"><div class="et">${t('noReadings')}</div></div>`;return;}
-  el.innerHTML=curReport.readings.map((r,i)=>`
-    <div class="ri">
-      <div class="ri-info"><div class="ri-name">${r.name}</div>${r.tag?`<div class="ri-tag">${r.tag}</div>`:''}</div>
-      <div class="rv"><div class="rnum ${r.status==='bad'?'bad':'ok'}">${r.value} ${r.unit}</div><span class="badge ${r.status==='ok'?'bg':r.status==='bad'?'br':'bgr'}" style="font-size:10px;">${r.status==='ok'?t('inSpec'):r.status==='bad'?t('outOfRange'):'N/A'}</span></div>
-      <button class="db" onclick="delReading(${i})">×</button>
-    </div>`).join('');
+  el.innerHTML=curReport.readings.map((r,i)=>{
+    const isCond=r.type==='condition'||(!r.value&&r.condition);
+    if(isCond){
+      const cond=r.condition||'ok';
+      const condColor=cond==='ok'?'var(--gd)':cond==='notok'?'var(--red)':'#92400E';
+      const condBg=cond==='ok'?'var(--gl)':cond==='notok'?'var(--rl)':'var(--al)';
+      const condLabel=cond==='ok'?'✅ OK':cond==='notok'?'❌ Not OK':'⚠️ Other';
+      return `<div class="ri">
+        <div class="ri-info"><div class="ri-name">${r.name}</div>${r.tag?`<div class="ri-tag">${r.tag}</div>`:''}<div style="font-size:10px;color:var(--g500);">Condition</div></div>
+        <div class="rv"><span class="badge" style="background:${condBg};color:${condColor};font-size:11px;">${condLabel}</span></div>
+        <button class="db" onclick="delReading(${i})" style="margin-left:4px;">×</button>
+      </div>`;
+    } else {
+      return `<div class="ri">
+        <div class="ri-info"><div class="ri-name">${r.name}</div>${r.tag?`<div class="ri-tag">${r.tag}</div>`:''}<div style="font-size:10px;color:var(--g500);">Measurement</div></div>
+        <div class="rv"><div class="rnum ${r.status==='bad'?'bad':'ok'}">${r.value} ${r.unit}</div><span class="badge ${r.status==='ok'?'bg':r.status==='bad'?'br':'bgr'}" style="font-size:10px;">${r.status==='ok'?t('inSpec'):r.status==='bad'?t('outOfRange'):'N/A'}</span></div>
+        <button class="db" onclick="delReading(${i})" style="margin-left:4px;">×</button>
+      </div>`;
+    }
+  }).join('');
+}
+let rdType='condition'; // 'condition' | 'measurement'
+function setReadingType(type){
+  rdType=type;
+  const condBtn=document.getElementById('rd-type-cond');
+  const measBtn=document.getElementById('rd-type-meas');
+  const condF=document.getElementById('rd-cond-fields');
+  const measF=document.getElementById('rd-meas-fields');
+  if(condBtn){condBtn.style.border=`1.5px solid ${type==='condition'?'var(--green)':'var(--g300)'}`;condBtn.style.background=type==='condition'?'var(--gl)':'#fff';condBtn.style.color=type==='condition'?'var(--gd)':'var(--g600)';}
+  if(measBtn){measBtn.style.border=`1.5px solid ${type==='measurement'?'var(--green)':'var(--g300)'}`;measBtn.style.background=type==='measurement'?'var(--gl)':'#fff';measBtn.style.color=type==='measurement'?'var(--gd)':'var(--g600)';}
+  if(condF)condF.style.display=type==='condition'?'':'none';
+  if(measF)measF.style.display=type==='measurement'?'':'none';
 }
 function addReading(){
-  const name=document.getElementById('rd-name').value.trim();const value=document.getElementById('rd-value').value.trim();
-  if(!name||!value){showToast('Name and value required');return;}
-  curReport.readings.push({name,value,unit:document.getElementById('rd-unit').value,tag:document.getElementById('rd-tag').value,status:document.getElementById('rd-status').value,notes:document.getElementById('rd-notes').value});
-  sv();closeModal('modal-add-reading');['rd-name','rd-tag','rd-value','rd-unit','rd-notes'].forEach(id=>document.getElementById(id).value='');document.getElementById('rd-status').value='ok';renderReadings();
+  const name=document.getElementById('rd-name').value.trim();
+  if(!name){showToast('Equipment name required');return;}
+  if(rdType==='measurement'){
+    const value=document.getElementById('rd-value').value.trim();
+    if(!value){showToast('Value required for measurement');return;}
+    curReport.readings.push({
+      type:'measurement',name,value,
+      unit:document.getElementById('rd-unit').value,
+      tag:document.getElementById('rd-tag').value,
+      status:document.getElementById('rd-status').value,
+      notes:document.getElementById('rd-notes').value
+    });
+  } else {
+    curReport.readings.push({
+      type:'condition',name,
+      condition:document.getElementById('rd-condition').value,
+      tag:document.getElementById('rd-tag').value,
+      notes:document.getElementById('rd-notes').value,
+      value:'',unit:'',
+      status:document.getElementById('rd-condition').value==='ok'?'ok':document.getElementById('rd-condition').value==='notok'?'bad':'na'
+    });
+  }
+  sv();closeModal('modal-add-reading');
+  ['rd-name','rd-tag','rd-value','rd-unit','rd-notes'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('rd-status').value='ok';
+  document.getElementById('rd-condition').value='ok';
+  setReadingType('condition');
+  renderReadings();
 }
 function delReading(i){curReport.readings.splice(i,1);sv();renderReadings();}
 
@@ -2048,19 +2175,35 @@ function renderIssues(){
   const el=document.getElementById('issue-items');const emp=document.getElementById('issue-empty');
   if(!curReport.issues.length){el.innerHTML='';emp.style.display='';return;}
   emp.style.display='none';
-  el.innerHTML=curReport.issues.map((is,i)=>`
-    <div class="issue sev-${is.severity}">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
-        <div style="font-size:13px;font-weight:600;">${is.title}</div>
-        <div style="display:flex;gap:6px;align-items:center;">
+  const isStatusCfg={
+    pending:{label:'⏳ Pending',bg:'var(--g100)',color:'var(--g600)'},
+    waiting_part:{label:'🔧 Waiting part',bg:'var(--bl)',color:'#1E40AF'},
+    processing:{label:'🔄 Processing',bg:'var(--al)',color:'#92400E'},
+    done:{label:'✅ Done',bg:'var(--gl)',color:'var(--gd)'}
+  };
+  el.innerHTML=curReport.issues.map((is,i)=>{
+    const isc=isStatusCfg[is.istatus||'pending']||isStatusCfg.pending;
+    return `<div class="issue sev-${is.severity}">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">
+        <div style="font-size:13px;font-weight:600;flex:1;padding-right:8px;">${is.title}</div>
+        <div style="display:flex;gap:5px;align-items:center;flex-shrink:0;">
           <span class="badge ${is.severity==='low'?'bb':is.severity==='medium'?'ba':is.severity==='critical'?'bp':'br'}" style="font-size:10px;">${is.severity}</span>
           <button class="db" onclick="delIssue(${i})">×</button>
         </div>
       </div>
-      ${is.description?`<div style="font-size:12px;color:var(--g600);">${is.description}</div>`:''}
-      ${is.action?`<div style="font-size:11px;color:var(--g500);margin-top:4px;font-style:italic;">→ ${is.action}</div>`:''}
+      ${is.description?`<div style="font-size:12px;color:var(--g600);margin-bottom:6px;">${is.description}</div>`:''}
+      <div style="display:flex;gap:5px;flex-wrap:wrap;align-items:center;margin-bottom:${is.action?'4px':'0'};">
+        <span style="font-size:10px;font-weight:600;color:var(--g500);">STATUS:</span>
+        ${['pending','waiting_part','processing','done'].map(st=>{
+          const sc=isStatusCfg[st];
+          const active=((is.istatus||'pending')===st);
+          return `<button onclick="setIssueStatus(${i},'${st}')" style="padding:3px 8px;border-radius:12px;border:1px solid ${active?'transparent':'var(--g300)'};background:${active?sc.bg:'#fff'};color:${active?sc.color:'var(--g500)'};font-size:10px;font-weight:${active?'600':'400'};cursor:pointer;font-family:var(--font);transition:all 0.15s;">${sc.label}</button>`;
+        }).join('')}
+      </div>
+      ${is.action?`<div style="font-size:11px;color:var(--g500);margin-top:2px;font-style:italic;">→ ${is.action}</div>`:''}
       ${is.photos&&is.photos.length?`<div class="pgrid" style="margin-top:6px;">${is.photos.map((p,pi)=>`<div class="pthumb"><img src="${p}"><button class="pdel" onclick="delIPhoto(${i},${pi})">×</button></div>`).join('')}<div class="padd" onclick="addPhotoToIssue(${i})"><span>📷</span></div></div>`:''}
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 function triggerPhoto(){photoCtx=null;tmpPhotos=[];document.getElementById('photoInput').click();}
 function addPhotoToIssue(idx){photoCtx=idx;document.getElementById('photoInput').click();}
@@ -2078,10 +2221,26 @@ function renderTmpPhotos(){
 function delTmpPhoto(i){tmpPhotos.splice(i,1);renderTmpPhotos();}
 function addIssue(){
   const title=document.getElementById('is-title').value.trim();if(!title){showToast('Title required');return;}
-  curReport.issues.push({title,description:document.getElementById('is-desc').value,severity:document.getElementById('is-sev').value,action:document.getElementById('is-action').value,photos:[...tmpPhotos]});
-  sv();closeModal('modal-add-issue');['is-title','is-desc','is-action'].forEach(id=>document.getElementById(id).value='');document.getElementById('is-sev').value='medium';tmpPhotos=[];renderIssues();
+  curReport.issues.push({
+    title,
+    description:document.getElementById('is-desc').value,
+    severity:document.getElementById('is-sev').value,
+    istatus:document.getElementById('is-istatus').value,
+    action:document.getElementById('is-action').value,
+    photos:[...tmpPhotos]
+  });
+  sv();closeModal('modal-add-issue');
+  ['is-title','is-desc','is-action'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('is-sev').value='medium';
+  document.getElementById('is-istatus').value='pending';
+  tmpPhotos=[];renderIssues();
 }
 function delIssue(i){curReport.issues.splice(i,1);sv();renderIssues();}
+function setIssueStatus(i,status){
+  if(!curReport||!curReport.issues[i])return;
+  curReport.issues[i].istatus=status;
+  sv();renderIssues();
+}
 
 // ═══════ TEAM ═══════
 function renderTeam(){
@@ -2161,19 +2320,77 @@ function changeMonth(dir){calM+=dir;if(calM<0){calM=11;calY--;}if(calM>11){calM=
 function selCalDay(key,d){
   selDay=key;
   document.getElementById('sel-day-ed').style.display='';
-  document.getElementById('sel-day-lbl').textContent=new Date(calY,calM,d).toLocaleDateString(S.lang==='vi'?'vi-VN':'en-GB',{day:'numeric',month:'long',year:'numeric'});
-  const dayTasks=S.tasks.filter(tk=>tk.date===key);
+  const dayLabel=new Date(calY,calM,d).toLocaleDateString(S.lang==='vi'?'vi-VN':'en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  document.getElementById('sel-day-lbl').textContent=dayLabel;
+
+  const dayTasks=S.tasks.filter(tk=>(tk.dateStart||tk.date||'')=== key);
+  const dayTrips=S.trips.filter(tr=>{
+    const start=tr.date||'';const end=tr.dateEnd||start;
+    return key>=start&&key<=end;
+  });
+  const leaveType=S.leaveData[key]||null;
+  const leaveLabels={trip:'🏭 Work trip',leave:'🌴 Leave',wfh:'💻 WFH',holiday:'🎉 Holiday'};
+
   const dtl=document.getElementById('day-task-list');
-  if(dayTasks.length){
-    dtl.innerHTML='<div style="font-size:11px;font-weight:600;color:var(--g500);margin-bottom:6px;">Tasks</div>'+dayTasks.map(tk=>`
-      <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--g100);">
-        <div style="font-size:12px;font-weight:500;">${tk.title}</div>
-        <div style="display:flex;gap:4px;align-items:center;">
-          <span class="badge ${tk.status==='done'?'bg':tk.status==='in_progress'?'ba':'bgr'}" style="font-size:10px;">${tk.status==='done'?t('done'):tk.status==='in_progress'?t('inProgress2'):t('pending')}</span>
-          <button class="spill in_progress" style="font-size:10px;padding:3px 8px;" onclick="setTaskStatus('${tk.id}','${tk.status==='done'?'pending':tk.status==='in_progress'?'done':'in_progress'}')">${tk.status==='done'?'↺':'→'}</button>
+  let html='';
+
+  // Leave / day type banner
+  if(leaveType){
+    const lc={trip:'var(--gl)',leave:'var(--al)',wfh:'var(--bl)',holiday:'var(--rl)'}[leaveType]||'var(--g100)';
+    const ltc={trip:'var(--gd)',leave:'#92400E',wfh:'#1E40AF',holiday:'#991B1B'}[leaveType]||'var(--g600)';
+    html+=`<div style="background:${lc};color:${ltc};border-radius:var(--rs);padding:8px 10px;margin-bottom:10px;font-size:12px;font-weight:600;">${leaveLabels[leaveType]||leaveType}</div>`;
+  }
+
+  // Trips on this day
+  if(dayTrips.length){
+    html+=`<div style="font-size:11px;font-weight:700;color:#00843D;letter-spacing:0.05em;margin-bottom:5px;">TRIPS</div>`;
+    dayTrips.forEach(tr=>{
+      const bc=tr.status==='completed'?'bg':tr.status==='in_progress'?'bb':'ba';
+      const bs=tr.status==='completed'?t('completed'):tr.status==='in_progress'?t('inProgress'):t('planned');
+      html+=`<div onclick="openTripDetail('${tr.id}')" style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--g100);cursor:pointer;">
+        <div>
+          <div style="font-size:12px;font-weight:600;color:var(--g800);">🏭 ${tr.plant}</div>
+          <div style="font-size:10px;color:var(--g500);">${tr.location||''}${tr.dateEnd&&tr.dateEnd!==tr.date?' · until '+fmtDate(tr.dateEnd):''}</div>
         </div>
-      </div>`).join('');
-  } else dtl.innerHTML='';
+        <span class="badge ${bc}" style="font-size:10px;">${bs}</span>
+      </div>`;
+    });
+    html+='<div style="height:10px;"></div>';
+  }
+
+  // Tasks on this day
+  if(dayTasks.length){
+    html+=`<div style="font-size:11px;font-weight:700;color:#00843D;letter-spacing:0.05em;margin-bottom:5px;">TASKS (${dayTasks.length})</div>`;
+    dayTasks.forEach(tk=>{
+      const catIcon={work:'🔧',leave:'🌴',travel:'✈️'}[tk.category||'work']||'📋';
+      const timeStr=tk.timeStart?(tk.timeEnd?`${tk.timeStart}–${tk.timeEnd}`:tk.timeStart):'';
+      const dur=calcDuration(tk);
+      const cycle={'pending':'in_progress','in_progress':'done','done':'pending'};
+      const nextStatus=cycle[tk.status]||'pending';
+      const statusIcon=tk.status==='done'?'✅':tk.status==='in_progress'?'🔄':'⏳';
+      html+=`<div style="padding:7px 0;border-bottom:1px solid var(--g100);">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
+          <div style="flex:1;cursor:pointer;" onclick="openTaskDetail('${tk.id}')">
+            <div style="font-size:12px;font-weight:500;color:var(--g800);">${catIcon} ${tk.title}</div>
+            ${timeStr||dur||tk.machine?`<div style="font-size:10px;color:var(--g500);margin-top:2px;">${[timeStr,dur,tk.machine].filter(Boolean).join(' · ')}</div>`:''}
+          </div>
+          <div style="display:flex;align-items:center;gap:4px;flex-shrink:0;">
+            <span style="font-size:14px;">${statusIcon}</span>
+            <button onclick="setTaskStatus('${tk.id}','${nextStatus}');selCalDay('${key}',${d})" style="font-size:10px;padding:3px 8px;border-radius:12px;border:1px solid var(--g300);background:#fff;cursor:pointer;font-family:var(--font);color:var(--g600);">→</button>
+          </div>
+        </div>
+      </div>`;
+    });
+    html+='<div style="height:4px;"></div>';
+  }
+
+  if(!dayTrips.length&&!dayTasks.length&&!leaveType){
+    html=`<div style="text-align:center;padding:16px 0;font-size:12px;color:var(--g400);">Nothing scheduled for this day.</div>`;
+  }
+
+  html+=`<button onclick="openNewTaskModal('${key}','work')" style="width:100%;margin-top:6px;padding:8px;border-radius:var(--rs);border:1px dashed var(--g300);background:transparent;font-family:var(--font);font-size:12px;color:var(--green);cursor:pointer;">＋ Add task for this day</button>`;
+
+  dtl.innerHTML=html;
 }
 function setDayType(type){if(!selDay)return;if(type===null)delete S.leaveData[selDay];else S.leaveData[selDay]=type;sv();renderCalendar();svAndSync('leave');}
 function updateLeaveSummary(){
