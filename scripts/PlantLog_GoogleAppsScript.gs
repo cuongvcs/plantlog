@@ -1,433 +1,188 @@
 /**
- * ============================================================
- * PlantLog v3 — Google Apps Script Backend
- * ============================================================
- * HOW TO DEPLOY:
- * 1. Go to https://script.google.com
- * 2. Click "New project"
- * 3. Paste this entire file into the editor
- * 4. Click "Save" (Ctrl+S)
- * 5. Click "Deploy" → "New deployment"
- * 6. Type: Web app
- * 7. Execute as: Me
- * 8. Who has access: Anyone  (or "Anyone with Google account")
- * 9. Click "Deploy" → Copy the Web App URL
- * 10. Paste that URL into PlantLog app Settings → Google Sheet URL
- * ============================================================
+ * PlantLog v4 — Google Apps Script Backend
+ * DEPLOY: script.google.com → New project → paste → Save
+ * Run setupSheets() once → Deploy → Web app → Anyone → copy URL
  */
 
-// ── CONFIG ──────────────────────────────────────────────────
-const SHEET_NAME_TRIPS    = 'Trips';
-const SHEET_NAME_TASKS    = 'Tasks';
-const SHEET_NAME_LEAVE    = 'Leave';
-const SHEET_NAME_REPORTS  = 'Reports';
-const SHEET_NAME_CHECKLIST= 'Checklist';
-const SHEET_NAME_READINGS = 'Readings';
-const SHEET_NAME_ISSUES   = 'Issues';
-const SHEET_NAME_TEAM     = 'Team';
-const SHEET_NAME_LOG      = 'SyncLog';
+const SN={TRIPS:'Trips',TASKS:'Tasks',LEAVE:'Leave',REPORTS:'Reports',
+  CHECKLIST:'Checklist',READINGS:'Readings',ISSUES:'Issues',TEAM:'Team',
+  BILLS:'Bills',MACHINES:'Machines',PLANS:'Plans',LOG:'SyncLog'};
 
-// ── COLUMN DEFINITIONS ──────────────────────────────────────
-const COLS = {
-  trips:     ['ID','Plant','Location','Date','DateEnd','Purpose','Contact','Transport','Status','CreatedAt'],
-  tasks:     ['ID','Title','Description','Category','DateStart','TimeStart','DateEnd','TimeEnd','Hours','Minutes','Priority','Period','Machine','Plan','TripID','Status','Checklist','CreatedAt','UpdatedAt'],
-  leave:     ['Date','Type','Note'],
-  reports:   ['TripID','SignoffSummary','SignoffResult','SignoffRemarks','SignedAt'],
-  checklist: ['TripID','ItemID','Name','Result','Note'],
-  readings:  ['TripID','Name','Tag','Value','Unit','Status','Notes'],
-  issues:    ['TripID','Title','Description','Severity','Action','PhotoCount'],
-  team:      ['TripID','Name','Role','Organization','SignoffRequired'],
-  log:       ['Timestamp','Action','Entity','EntityID','Status','Details']
+const COLS={
+  trips:    ['ID','Plant','Location','Date','DateEnd','Purpose','Contact','Transport','Status','CreatedAt'],
+  tasks:    ['ID','Title','Description','Category','DateStart','TimeStart','DateEnd','TimeEnd','Hours','Minutes','Priority','Period','Machine','Plan','TripID','Status','Checklist','ChecklistJson','CreatedAt','UpdatedAt'],
+  leave:    ['Date','Type','Note'],
+  reports:  ['TripID','SignoffSummary','SignoffResult','SignoffRemarks','SignedAt'],
+  checklist:['TripID','ItemID','Name','Result','Note'],
+  readings: ['TripID','Type','Name','Tag','Value','Unit','Status','Condition','Notes'],
+  issues:   ['TripID','Title','Description','Severity','IssueStatus','Action','PhotoCount'],
+  team:     ['TripID','Name','Role','Organization','SignoffRequired'],
+  bills:    ['ID','TripID','Date','BillNumber','Detail','Amount','Currency','Category','Notes','PhotoCount','PhotosJson','CreatedAt'],
+  machines: ['Name'],
+  plans:    ['Name'],
+  log:      ['Timestamp','Action','Entity','EntityID','Status','Details']
 };
 
-// ── ENTRY POINTS ─────────────────────────────────────────────
-
-/**
- * HTTP GET — read data
- * ?action=getAll  → returns all data
- * ?action=getTrips
- * ?action=getTasks
- * ?action=getLeave
- */
-function doGet(e) {
-  try {
-    const action = (e.parameter && e.parameter.action) || 'getAll';
-    let data = {};
-
-    if (action === 'getAll' || action === 'getTrips')    data.trips     = readSheet(SHEET_NAME_TRIPS,    COLS.trips);
-    if (action === 'getAll' || action === 'getTasks')    data.tasks     = readSheet(SHEET_NAME_TASKS,    COLS.tasks);
-    if (action === 'getAll' || action === 'getLeave')    data.leave     = readSheet(SHEET_NAME_LEAVE,    COLS.leave);
-    if (action === 'getAll' || action === 'getReports')  data.reports   = readSheet(SHEET_NAME_REPORTS,  COLS.reports);
-    if (action === 'getAll' || action === 'getChecklist')data.checklist = readSheet(SHEET_NAME_CHECKLIST,COLS.checklist);
-    if (action === 'getAll' || action === 'getReadings') data.readings  = readSheet(SHEET_NAME_READINGS, COLS.readings);
-    if (action === 'getAll' || action === 'getIssues')   data.issues    = readSheet(SHEET_NAME_ISSUES,   COLS.issues);
-    if (action === 'getAll' || action === 'getTeam')     data.team      = readSheet(SHEET_NAME_TEAM,     COLS.team);
-
-    return jsonResponse({ ok: true, data });
-  } catch (err) {
-    return jsonResponse({ ok: false, error: err.message });
-  }
+function db_(){
+  const f=DriveApp.getFilesByName('PlantLog Database');
+  return f.hasNext()?SpreadsheetApp.open(f.next()):SpreadsheetApp.create('PlantLog Database');
 }
 
-/**
- * HTTP POST — write data
- * Body: { action: 'syncAll', payload: { trips:[], tasks:[], leave:{}, reports:{}, ... } }
- * Or:   { action: 'upsertTrip', payload: { trip object } }
- * Or:   { action: 'upsertTask', payload: { task object } }
- * Or:   { action: 'deleteTrip', payload: { id } }
- * Or:   { action: 'deleteTask', payload: { id } }
- */
-function doPost(e) {
-  try {
-    // Support both application/json and text/plain (used for CORS bypass)
-    const raw = e.postData ? e.postData.contents : '{}';
-    const body    = JSON.parse(raw);
-    const action  = body.action;
-    const payload = body.payload;
-    let result    = {};
-
-    switch (action) {
-      case 'syncAll':
-        result = syncAll(payload);
-        break;
-      case 'upsertTrip':
-        result = upsertRow(SHEET_NAME_TRIPS, COLS.trips, payload, 'ID');
-        logAction('UPSERT', 'Trip', payload.id || '');
-        break;
-      case 'upsertTask':
-        result = upsertRow(SHEET_NAME_TASKS, COLS.tasks, payload, 'ID');
-        logAction('UPSERT', 'Task', payload.id || '');
-        break;
-      case 'upsertLeave':
-        result = upsertRow(SHEET_NAME_LEAVE, COLS.leave, payload, 'Date');
-        logAction('UPSERT', 'Leave', payload.date || '');
-        break;
-      case 'deleteTrip':
-        result = deleteRow(SHEET_NAME_TRIPS, 'ID', payload.id);
-        cleanTripData(payload.id);
-        logAction('DELETE', 'Trip', payload.id);
-        break;
-      case 'deleteTask':
-        result = deleteRow(SHEET_NAME_TASKS, 'ID', payload.id);
-        logAction('DELETE', 'Task', payload.id);
-        break;
-      case 'saveReport':
-        result = saveReport(payload.tripId, payload.report);
-        logAction('SAVE', 'Report', payload.tripId);
-        break;
-      case 'ping':
-        result = { message: 'PlantLog API is running ✓', timestamp: new Date().toISOString() };
-        break;
-      default:
-        return jsonResponse({ ok: false, error: 'Unknown action: ' + action });
-    }
-
-    return jsonResponse({ ok: true, result });
-  } catch (err) {
-    return jsonResponse({ ok: false, error: err.message });
-  }
+function cellStr(v){
+  if(v===null||v===undefined||v==='')return'';
+  if(v instanceof Date){return isNaN(v.getTime())?'':Utilities.formatDate(v,Session.getScriptTimeZone(),'yyyy-MM-dd');}
+  return String(v);
 }
 
-// ── SYNC ALL ─────────────────────────────────────────────────
-function syncAll(payload) {
-  const ss = getOrCreateSpreadsheet();
-  const results = {};
+function ensureSheet(ss,name,hdrs){
+  let sh=ss.getSheetByName(name);
+  if(!sh){
+    sh=ss.insertSheet(name);
+    sh.getRange(1,1,1,hdrs.length).setValues([hdrs]).setBackground('#1D9E75').setFontColor('#fff').setFontWeight('bold');
+    sh.setFrozenRows(1);
+    return sh;
+  }
+  // Update headers if needed
+  const need=hdrs.length;
+  if(sh.getMaxColumns()<need)sh.insertColumnsAfter(sh.getMaxColumns(),need-sh.getMaxColumns());
+  const ex=sh.getRange(1,1,1,sh.getLastColumn()||1).getValues()[0];
+  let diff=ex.length<need;
+  for(let i=0;i<need&&!diff;i++)if(ex[i]!==hdrs[i])diff=true;
+  if(diff){
+    sh.getRange(1,1,1,need).setValues([hdrs]).setBackground('#1D9E75').setFontColor('#fff').setFontWeight('bold');
+    sh.setFrozenRows(1);
+  }
+  return sh;
+}
 
-  // Trips
-  if (payload.trips && payload.trips.length) {
-    clearAndWrite(ss, SHEET_NAME_TRIPS, COLS.trips, payload.trips.map(tr => [
-      tr.id, tr.plant, tr.location||'', tr.date||'', tr.dateEnd||'',
-      tr.purpose||'', tr.contact||'', tr.transport||'', tr.status||'planned',
-      tr.createdAt||new Date().toISOString()
-    ]));
-    results.trips = payload.trips.length;
+function readSheet(ss,name,hdrs){
+  const sh=ensureSheet(ss,name,hdrs);
+  const data=sh.getDataRange().getValues();
+  if(data.length<=1)return[];
+  const h=data[0].map(String);
+  return data.slice(1).filter(r=>r[0]!==''&&r[0]!==null&&r[0]!==undefined).map(r=>{
+    const o={};h.forEach((k,i)=>{o[k]=cellStr(r[i]);});return o;
+  });
+}
+
+function writeSheet(ss,name,hdrs,rows){
+  const sh=ensureSheet(ss,name,hdrs);
+  const last=sh.getLastRow();
+  if(last>1)sh.getRange(2,1,last-1,sh.getMaxColumns()).clearContent();
+  if(!rows||!rows.length)return;
+  const safe=rows.map(row=>
+    hdrs.map((_,i)=>{
+      const c=row[i];
+      if(c===null||c===undefined)return'';
+      if(c instanceof Date)return cellStr(c);
+      if(typeof c==='object')return JSON.stringify(c);
+      return c;
+    })
+  );
+  sh.getRange(2,1,safe.length,hdrs.length).setValues(safe);
+}
+
+function log_(a,e,id,d){
+  try{const sh=ensureSheet(db_(),SN.LOG,COLS.log);sh.appendRow([new Date().toISOString(),a,e,id||'','OK',d||'']);}catch(x){}
+}
+
+function doGet(e){
+  try{
+    const act=(e.parameter&&e.parameter.action)||'getAll';
+    const s=db_();
+    if(act==='ping')return json_({ok:true,result:{message:'PlantLog API running',ts:new Date().toISOString()}});
+    const d={};
+    if(act==='getAll'||act==='getTrips')   d.trips=readSheet(s,SN.TRIPS,COLS.trips);
+    if(act==='getAll'||act==='getTasks')   d.tasks=readSheet(s,SN.TASKS,COLS.tasks);
+    if(act==='getAll'||act==='getLeave')   d.leave=readSheet(s,SN.LEAVE,COLS.leave);
+    if(act==='getAll'||act==='getBills')   d.bills=readSheet(s,SN.BILLS,COLS.bills);
+    if(act==='getAll'||act==='getReports') d.reports=readSheet(s,SN.REPORTS,COLS.reports);
+    return json_({ok:true,data:d});
+  }catch(x){return json_({ok:false,error:x.message});}
+}
+
+function doPost(e){
+  try{
+    const body=JSON.parse(e.postData?e.postData.contents:'{}');
+    const act=body.action,p=body.payload;
+    if(act==='syncAll')return json_({ok:true,result:syncAll(p)});
+    if(act==='ping')return json_({ok:true,result:{message:'PlantLog API running'}});
+    return json_({ok:false,error:'Unknown action: '+act});
+  }catch(x){return json_({ok:false,error:x.message+'|'+x.stack});}
+}
+
+function syncAll(p){
+  const s=db_();const r={};
+
+  if(p.trips&&p.trips.length){
+    writeSheet(s,SN.TRIPS,COLS.trips,p.trips.map(t=>[
+      t.id,t.plant,t.location,t.date,t.dateEnd,
+      t.purpose,t.contact,t.transport,t.status,t.createdAt
+    ]));r.trips=p.trips.length;
   }
 
-  // Tasks
-  if (payload.tasks && payload.tasks.length) {
-    clearAndWrite(ss, SHEET_NAME_TASKS, COLS.tasks, payload.tasks.map(tk => [
-      tk.id, tk.title, tk.desc||'', tk.category||'work',
-      tk.dateStart||tk.date||'', tk.timeStart||tk.time||'',
-      tk.dateEnd||'', tk.timeEnd||'',
-      tk.hours||'', tk.minutes||'',
-      tk.priority||'medium', tk.period||'',
-      tk.machine||'', tk.plan||'', tk.tripId||'',
-      tk.status||'pending',
-      tk.checklist||'[]',
-      tk.createdAt||'', tk.updatedAt||new Date().toISOString()
-    ]));
-    // Save machine/plan lists as named ranges for easy access
-    if (payload.machines && payload.machines.length) {
-      saveMasterList(ss, 'Machines', payload.machines);
-    }
-    if (payload.plans && payload.plans.length) {
-      saveMasterList(ss, 'Plans', payload.plans);
-    }
-    results.tasks = payload.tasks.length;
+  if(p.tasks&&p.tasks.length){
+    writeSheet(s,SN.TASKS,COLS.tasks,p.tasks.map(t=>[
+      t.id,t.title,t.desc,t.category,
+      t.dateStart,t.timeStart,t.dateEnd,t.timeEnd,
+      t.hours,t.minutes,
+      t.priority,t.period,t.machine,t.plan,t.tripId,t.status,
+      t.checklist,t.checklistJson,
+      t.createdAt,t.updatedAt
+    ]));r.tasks=p.tasks.length;
   }
 
-  // Leave
-  if (payload.leaveData && Object.keys(payload.leaveData).length) {
-    const leaveRows = Object.entries(payload.leaveData).map(([date, type]) => [date, type, '']);
-    clearAndWrite(ss, SHEET_NAME_LEAVE, COLS.leave, leaveRows);
-    results.leave = leaveRows.length;
+  if(p.leaveData&&Object.keys(p.leaveData).length){
+    const rows=Object.entries(p.leaveData).map(([d,t])=>[d,t,'']);
+    writeSheet(s,SN.LEAVE,COLS.leave,rows);r.leave=rows.length;
   }
 
-  // Reports + sub-data
-  if (payload.reports) {
-    const reportRows = [], checkRows = [], readingRows = [], issueRows = [], teamRows = [];
+  if(p.bills&&p.bills.length){
+    writeSheet(s,SN.BILLS,COLS.bills,p.bills.map(b=>[
+      b.id,b.tripId,b.date,b.billNumber,
+      b.detail,b.amount||0,b.currency,b.category,
+      b.notes,b.photoCount||0,
+      b.photosJson||'[]',
+      b.createdAt
+    ]));r.bills=p.bills.length;
+  }
 
-    Object.entries(payload.reports).forEach(([tripId, rep]) => {
-      if (!rep) return;
+  if(p.machines&&p.machines.length)writeSheet(s,SN.MACHINES,COLS.machines,p.machines.map(m=>[m]));
+  if(p.plans&&p.plans.length)writeSheet(s,SN.PLANS,COLS.plans,p.plans.map(m=>[m]));
 
-      // Report signoff
-      reportRows.push([
-        tripId,
-        rep.signoff?.summary || '',
-        rep.signoff?.result  || '',
-        rep.signoff?.remarks || '',
-        new Date().toISOString()
-      ]);
-
-      // Checklist
-      (rep.checklist || []).forEach(item => {
-        checkRows.push([tripId, item.id||'', item.name||'', item.result||'', item.note||'']);
-      });
-
-      // Readings
-      (rep.readings || []).forEach(r => {
-        readingRows.push([tripId, r.name||'', r.tag||'', r.value||'', r.unit||'', r.status||'', r.notes||'']);
-      });
-
-      // Issues
-      (rep.issues || []).forEach(is => {
-        issueRows.push([tripId, is.title||'', is.description||'', is.severity||'', is.action||'', (is.photos||[]).length]);
-      });
-
-      // Team
-      (rep.team || []).forEach(m => {
-        teamRows.push([tripId, m.name||'', m.role||'', m.org||'', m.signoff||'']);
-      });
+  if(p.reports){
+    const cl=[],rd=[],is=[],tm=[],rp=[];
+    Object.entries(p.reports).forEach(([tid,rep])=>{
+      if(!rep)return;
+      const so=rep.signoff||{};
+      rp.push([tid,so.summary||'',so.result||'',so.remarks||'',new Date().toISOString()]);
+      (rep.checklist||[]).forEach(c=>cl.push([tid,c.id||'',c.name||'',c.result||'',c.note||'']));
+      (rep.readings||[]).forEach(r=>rd.push([tid,r.type||'',r.name||'',r.tag||'',r.value||'',r.unit||'',r.status||'',r.condition||'',r.notes||'']));
+      (rep.issues||[]).forEach(i=>is.push([tid,i.title||'',i.description||'',i.severity||'',i.istatus||'pending',i.action||'',0]));
+      (rep.team||[]).forEach(m=>tm.push([tid,m.name||'',m.role||'',m.org||'',m.signoff||'']));
     });
-
-    if (reportRows.length)  clearAndWrite(ss, SHEET_NAME_REPORTS,   COLS.reports,   reportRows);
-    if (checkRows.length)   clearAndWrite(ss, SHEET_NAME_CHECKLIST,  COLS.checklist, checkRows);
-    if (readingRows.length) clearAndWrite(ss, SHEET_NAME_READINGS,   COLS.readings,  readingRows);
-    if (issueRows.length)   clearAndWrite(ss, SHEET_NAME_ISSUES,     COLS.issues,    issueRows);
-    if (teamRows.length)    clearAndWrite(ss, SHEET_NAME_TEAM,       COLS.team,      teamRows);
-
-    results.reports = reportRows.length;
+    if(rp.length)writeSheet(s,SN.REPORTS,COLS.reports,rp);
+    if(cl.length)writeSheet(s,SN.CHECKLIST,COLS.checklist,cl);
+    if(rd.length)writeSheet(s,SN.READINGS,COLS.readings,rd);
+    if(is.length)writeSheet(s,SN.ISSUES,COLS.issues,is);
+    if(tm.length)writeSheet(s,SN.TEAM,COLS.team,tm);
+    r.reports=rp.length;
   }
 
-  // Save machine/plan master lists if provided
-  if (payload.machines && payload.machines.length) {
-    saveMasterList(ss, 'Machines', payload.machines);
-    results.machines = payload.machines.length;
-  }
-  if (payload.plans && payload.plans.length) {
-    saveMasterList(ss, 'Plans', payload.plans);
-    results.plans = payload.plans.length;
-  }
-
-  logAction('SYNC_ALL', 'All', '', JSON.stringify(results));
-  formatAllSheets(ss);
-  return results;
+  try{s.getSheets().forEach(sh=>{if(sh.getLastColumn()>0)sh.autoResizeColumns(1,sh.getLastColumn());});}catch(x){}
+  log_('SYNC_ALL','All','',JSON.stringify(r));
+  return r;
 }
 
-// ── SAVE REPORT (single trip) ────────────────────────────────
-function saveReport(tripId, rep) {
-  const ss = getOrCreateSpreadsheet();
-
-  // Remove existing rows for this trip
-  [SHEET_NAME_REPORTS, SHEET_NAME_CHECKLIST, SHEET_NAME_READINGS,
-   SHEET_NAME_ISSUES, SHEET_NAME_TEAM].forEach(name => {
-    deleteRowsByValue(ss, name, 'TripID', tripId);
-  });
-
-  // Write new data
-  const reportRow = [[tripId, rep.signoff?.summary||'', rep.signoff?.result||'', rep.signoff?.remarks||'', new Date().toISOString()]];
-  appendRows(ss, SHEET_NAME_REPORTS, COLS.reports, reportRow);
-
-  if (rep.checklist?.length) {
-    appendRows(ss, SHEET_NAME_CHECKLIST, COLS.checklist,
-      rep.checklist.map(i => [tripId, i.id||'', i.name||'', i.result||'', i.note||'']));
-  }
-  if (rep.readings?.length) {
-    appendRows(ss, SHEET_NAME_READINGS, COLS.readings,
-      rep.readings.map(r => [tripId, r.name||'', r.tag||'', r.value||'', r.unit||'', r.status||'', r.notes||'']));
-  }
-  if (rep.issues?.length) {
-    appendRows(ss, SHEET_NAME_ISSUES, COLS.issues,
-      rep.issues.map(i => [tripId, i.title||'', i.description||'', i.severity||'', i.action||'', (i.photos||[]).length]));
-  }
-  if (rep.team?.length) {
-    appendRows(ss, SHEET_NAME_TEAM, COLS.team,
-      rep.team.map(m => [tripId, m.name||'', m.role||'', m.org||'', m.signoff||'']));
-  }
-
-  return { saved: true, tripId };
+function setupSheets(){
+  const s=db_();
+  [['Trips',COLS.trips],['Tasks',COLS.tasks],['Leave',COLS.leave],['Reports',COLS.reports],
+   ['Checklist',COLS.checklist],['Readings',COLS.readings],['Issues',COLS.issues],['Team',COLS.team],
+   ['Bills',COLS.bills],['Machines',COLS.machines],['Plans',COLS.plans],['SyncLog',COLS.log]
+  ].forEach(([n,h])=>ensureSheet(s,n,h));
+  try{const d=s.getSheetByName('Sheet1');if(d&&s.getSheets().length>1)s.deleteSheet(d);}catch(x){}
+  Logger.log('PlantLog Database ready: '+s.getUrl());
+  return s.getUrl();
 }
 
-// ── SHEET HELPERS ────────────────────────────────────────────
-function getOrCreateSpreadsheet() {
-  const files = DriveApp.getFilesByName('PlantLog Database');
-  if (files.hasNext()) {
-    return SpreadsheetApp.open(files.next());
-  }
-  const ss = SpreadsheetApp.create('PlantLog Database');
-  Logger.log('Created new spreadsheet: ' + ss.getUrl());
-  return ss;
-}
-
-function getOrCreateSheet(ss, name, headers) {
-  let sheet = ss.getSheetByName(name);
-  if (!sheet) {
-    sheet = ss.insertSheet(name);
-    sheet.appendRow(headers);
-    sheet.getRange(1, 1, 1, headers.length).setBackground('#1D9E75').setFontColor('#ffffff').setFontWeight('bold');
-    sheet.setFrozenRows(1);
-  }
-  return sheet;
-}
-
-function clearAndWrite(ss, sheetName, headers, rows) {
-  const sheet = getOrCreateSheet(ss, sheetName, headers);
-  // Clear data rows only (keep header)
-  const lastRow = sheet.getLastRow();
-  if (lastRow > 1) sheet.getRange(2, 1, lastRow - 1, headers.length).clearContent();
-  if (rows.length) sheet.getRange(2, 1, rows.length, headers.length).setValues(rows);
-}
-
-function appendRows(ss, sheetName, headers, rows) {
-  const sheet = getOrCreateSheet(ss, sheetName, headers);
-  rows.forEach(row => sheet.appendRow(row));
-}
-
-function readSheet(sheetName, headers) {
-  const ss = getOrCreateSpreadsheet();
-  const sheet = getOrCreateSheet(ss, sheetName, headers);
-  const data = sheet.getDataRange().getValues();
-  if (data.length <= 1) return [];
-  const hdrs = data[0];
-  return data.slice(1).filter(row => row[0] !== '').map(row => {
-    const obj = {};
-    hdrs.forEach((h, i) => { obj[h] = row[i]; });
-    return obj;
-  });
-}
-
-function upsertRow(sheetName, headers, obj, keyCol) {
-  const ss = getOrCreateSpreadsheet();
-  const sheet = getOrCreateSheet(ss, sheetName, headers);
-  const keyIdx = headers.indexOf(keyCol);
-  const keyVal = obj[keyCol.toLowerCase()] || obj[keyCol];
-  const data = sheet.getDataRange().getValues();
-
-  // Find existing row
-  for (let i = 1; i < data.length; i++) {
-    if (data[i][keyIdx] == keyVal) {
-      const row = headers.map(h => obj[h.toLowerCase()] || obj[h] || '');
-      sheet.getRange(i + 1, 1, 1, headers.length).setValues([row]);
-      return { updated: true, row: i + 1 };
-    }
-  }
-  // Append new
-  const row = headers.map(h => obj[h.toLowerCase()] || obj[h] || '');
-  sheet.appendRow(row);
-  return { inserted: true };
-}
-
-function deleteRow(sheetName, keyCol, keyVal) {
-  const ss = getOrCreateSpreadsheet();
-  const sheet = ss.getSheetByName(sheetName);
-  if (!sheet) return { notFound: true };
-  const data = sheet.getDataRange().getValues();
-  const keyIdx = data[0].indexOf(keyCol);
-  for (let i = data.length - 1; i >= 1; i--) {
-    if (data[i][keyIdx] == keyVal) { sheet.deleteRow(i + 1); return { deleted: true }; }
-  }
-  return { notFound: true };
-}
-
-function deleteRowsByValue(ss, sheetName, col, val) {
-  const sheet = ss.getSheetByName(sheetName);
-  if (!sheet) return;
-  const data = sheet.getDataRange().getValues();
-  const colIdx = data[0].indexOf(col);
-  for (let i = data.length - 1; i >= 1; i--) {
-    if (data[i][colIdx] == val) sheet.deleteRow(i + 1);
-  }
-}
-
-function cleanTripData(tripId) {
-  const ss = getOrCreateSpreadsheet();
-  [SHEET_NAME_REPORTS, SHEET_NAME_CHECKLIST, SHEET_NAME_READINGS,
-   SHEET_NAME_ISSUES, SHEET_NAME_TEAM].forEach(name => {
-    deleteRowsByValue(ss, name, 'TripID', tripId);
-  });
-}
-
-function logAction(action, entity, entityId, details) {
-  try {
-    const ss = getOrCreateSpreadsheet();
-    const sheet = getOrCreateSheet(ss, SHEET_NAME_LOG, COLS.log);
-    sheet.appendRow([new Date().toISOString(), action, entity, entityId, 'OK', details || '']);
-  } catch(e) { /* silent */ }
-}
-
-function formatAllSheets(ss) {
-  ss.getSheets().forEach(sheet => {
-    if (sheet.getLastRow() > 0) {
-      sheet.autoResizeColumns(1, sheet.getLastColumn());
-    }
-  });
-}
-
-function jsonResponse(obj) {
-  // Setting MIME to JSON automatically adds correct CORS headers in GAS
-  const output = ContentService.createTextOutput(JSON.stringify(obj));
-  output.setMimeType(ContentService.MimeType.JSON);
-  return output;
-}
-
-// Handle CORS preflight OPTIONS — GAS handles this automatically,
-// but doGet with action=ping is a reliable CORS-safe connectivity test
-function doOptions(e) {
-  return ContentService.createTextOutput('')
-    .setMimeType(ContentService.MimeType.TEXT);
-}
-
-
-// ── MASTER LISTS (Machines, Plans) ───────────────────────────
-function saveMasterList(ss, name, items) {
-  let sheet = ss.getSheetByName(name);
-  if (!sheet) {
-    sheet = ss.insertSheet(name);
-    sheet.getRange(1, 1).setValue(name).setBackground('#1D9E75').setFontColor('#ffffff').setFontWeight('bold');
-    sheet.setFrozenRows(1);
-  }
-  const lastRow = sheet.getLastRow();
-  if (lastRow > 1) sheet.getRange(2, 1, lastRow - 1, 1).clearContent();
-  if (items.length) sheet.getRange(2, 1, items.length, 1).setValues(items.map(i => [i]));
-}
-// ── MANUAL SETUP TRIGGER ─────────────────────────────────────
-// Run this once manually in Apps Script to create all sheets
-function setupSheets() {
-  const ss = getOrCreateSpreadsheet();
-  Object.entries(COLS).forEach(([key, headers]) => {
-    const name = {
-      trips:'Trips',tasks:'Tasks',leave:'Leave',reports:'Reports',
-      checklist:'Checklist',readings:'Readings',issues:'Issues',
-      team:'Team',log:'SyncLog',machines:'Machines',plans:'Plans'
-    }[key];
-    getOrCreateSheet(ss, name, headers);
-  });
-
-  // Delete default "Sheet1" if empty
-  const defaultSheet = ss.getSheetByName('Sheet1');
-  if (defaultSheet && ss.getSheets().length > 1) ss.deleteSheet(defaultSheet);
-
-  formatAllSheets(ss);
-  Logger.log('✅ PlantLog Database ready: ' + ss.getUrl());
-  return ss.getUrl();
-}
+function json_(o){return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);}
