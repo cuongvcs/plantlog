@@ -1781,7 +1781,7 @@ function renderTasks(){
   let tasks=S.tasks.slice();
   if(taskCat!=='all')tasks=tasks.filter(tk=>(tk.category||'work')===taskCat);
   if(taskStatusFilter!=='all')tasks=tasks.filter(tk=>tk.status===taskStatusFilter);
-  tasks.sort((a,b)=>(a.dateStart||a.date||'').localeCompare(b.dateStart||b.date||''));
+  tasks.sort((a,b)=>(b.dateStart||b.date||'').localeCompare(a.dateStart||a.date||''));
 
   // Summary stats
   const total=tasks.length;
@@ -1862,7 +1862,7 @@ function renderKanban(body, today){
   let html=`<div class="kanban-board">`;
   statuses.forEach(st=>{
     const items=S.tasks.filter(tk=>tk.status===st.key&&(taskCat==='all'||(tk.category||'work')===taskCat))
-      .sort((a,b)=>(a.dateStart||a.date||'').localeCompare(b.dateStart||b.date||''));
+      .sort((a,b)=>(b.dateStart||b.date||'').localeCompare(a.dateStart||a.date||''));
     const overdue=items.filter(tk=>(tk.dateEnd||tk.date||tk.dateStart||'')<today&&st.key!=='done').length;
     html+=`<div class="kb-col">
       <div class="kb-col-hdr">
@@ -2215,7 +2215,7 @@ function renderReportTaskPicker(){
   const allTasks=[...S.tasks].sort((a,b)=>{
     const da=a.dateStart||a.date||'';
     const db=b.dateStart||b.date||'';
-    return da.localeCompare(db)||a.title.localeCompare(b.title);
+    return db.localeCompare(da)||a.title.localeCompare(b.title);
   });
 
   if(!allTasks.length){
@@ -2299,7 +2299,7 @@ function renderReportTasksPreview(){
 
   // Group by date
   const tasks=selected.map(id=>S.tasks.find(t=>t.id===id)).filter(Boolean);
-  tasks.sort((a,b)=>(a.dateStart||a.date||'').localeCompare(b.dateStart||b.date||'')||a.title.localeCompare(b.title));
+  tasks.sort((a,b)=>(b.dateStart||b.date||'').localeCompare(a.dateStart||a.date||'')||a.title.localeCompare(b.title));
 
   // Group into date buckets
   const byDate={};
@@ -2795,7 +2795,7 @@ function buildPDFPreview(){
     <div class="ps">${(()=>{
       const sel=(r.reportTasks||[]);
       if(!sel.length)return'<div class="pst" style="color:var(--g400);">Tasks (none selected)</div>';
-      const tasks=sel.map(id=>S.tasks.find(t=>t.id===id)).filter(Boolean).sort((a,b)=>(a.dateStart||a.date||'').localeCompare(b.dateStart||b.date||'')||a.title.localeCompare(b.title));
+      const tasks=sel.map(id=>S.tasks.find(t=>t.id===id)).filter(Boolean).sort((a,b)=>(b.dateStart||b.date||'').localeCompare(a.dateStart||a.date||'')||a.title.localeCompare(b.title));
       const catIcon=c=>({work:'🔧',leave:'🌴',travel:'✈️'}[c]||'📋');
       const statusIcon=s=>s==='done'?'✅':s==='in_progress'?'🔄':'⏳';
       // Group by date
@@ -2825,7 +2825,7 @@ function buildPDFPreview(){
       return out;
     })()}</div>
     <div class="ps">${(()=>{
-      const tb=(S.bills||[]).filter(b=>b.tripId===curTrip).sort((a,b2)=>a.date.localeCompare(b2.date));
+      const tb=(S.bills||[]).filter(b=>b.tripId===curTrip).sort((a,b2)=>b2.date.localeCompare(a.date));
       if(!tb.length)return'';
       const total=tb.reduce((s,b)=>s+(parseFloat(b.amount)||0),0);
       const currencies=[...new Set(tb.map(b=>b.currency||'VND'))].join('/');
@@ -3017,7 +3017,7 @@ function exportPDF(){
   if(rptTaskIds.length){
     sec(`TASKS IN REPORT (${rptTaskIds.length})`);
     const rptTasks=rptTaskIds.map(id=>S.tasks.find(t=>t.id===id)).filter(Boolean)
-      .sort((a,b)=>(a.dateStart||a.date||'').localeCompare(b.dateStart||b.date||'')||a.title.localeCompare(b.title));
+      .sort((a,b)=>(b.dateStart||b.date||'').localeCompare(a.dateStart||a.date||'')||a.title.localeCompare(b.title));
     // Group by date
     const byDate={};
     rptTasks.forEach(tk=>{const d=tk.dateStart||tk.date||'';if(!byDate[d])byDate[d]=[];byDate[d].push(tk);});
@@ -3089,7 +3089,7 @@ function exportPDF(){
     ln();
   }
   // ── EXPENSE BILLS SECTION ──
-  const tripBills=(S.bills||[]).filter(b=>b.tripId===curTrip).sort((a,b)=>a.date.localeCompare(b.date));
+  const tripBills=(S.bills||[]).filter(b=>b.tripId===curTrip).sort((a,b)=>b.date.localeCompare(a.date));
   if(tripBills.length){
     const grandTotal=tripBills.reduce((s,b)=>s+(parseFloat(b.amount)||0),0);
     const currencies=[...new Set(tripBills.map(b=>b.currency||'VND'))].join('/');
@@ -3580,7 +3580,7 @@ const BILL_CAT_LABELS={accommodation:'🏨 Accommodation',travel:'✈️ Travel'
 function renderTripBills(tripId){
   const el=document.getElementById('trip-bills-section');
   if(!el)return;
-  const bills=(S.bills||[]).filter(b=>b.tripId===tripId).sort((a,b)=>a.date.localeCompare(b.date));
+  const bills=(S.bills||[]).filter(b=>b.tripId===tripId).sort((a,b)=>b.date.localeCompare(a.date));
   const grandTotal=bills.reduce((s,b)=>s+(parseFloat(b.amount)||0),0);
   const currencies=[...new Set(bills.map(b=>b.currency||'VND'))];
   const curStr=currencies.join('/');
@@ -3865,7 +3865,7 @@ function renderBillsScreen() {
         <div style="font-size:13px;font-weight:700;">${totalStr}</div>
       </div>
       <div style="background:#fff;border-radius:0 0 var(--rs) var(--rs);box-shadow:var(--sh);margin-bottom:12px;">
-        ${tripBills.sort((a,b)=>a.date.localeCompare(b.date)).map(b => renderBillRow(b)).join('')}
+        ${tripBills.sort((a,b)=>b.date.localeCompare(a.date)).map(b => renderBillRow(b)).join('')}
       </div>`;
     });
   } else {
@@ -3957,7 +3957,7 @@ function buildBillPDFPreview() {
 
   let bills = [...(S.bills || [])];
   if (tripFilter !== 'all') bills = bills.filter(b => b.tripId === tripFilter);
-  bills.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+  bills.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
 
   if (!bills.length) { previewEl.innerHTML = '<div class="empty"><div class="et">No bills to export.</div></div>'; return; }
 
@@ -4020,7 +4020,7 @@ function exportBillsPDF() {
 
   let bills = [...(S.bills || [])];
   if (tripFilter !== 'all') bills = bills.filter(b => b.tripId === tripFilter);
-  bills.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+  bills.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
 
   if (!bills.length) { showToast('No bills to export'); return; }
 
