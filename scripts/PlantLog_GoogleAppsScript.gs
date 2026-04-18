@@ -9,7 +9,7 @@ const SN={TRIPS:'Trips',TASKS:'Tasks',LEAVE:'Leave',REPORTS:'Reports',
   BILLS:'Bills',MACHINES:'Machines',PLANS:'Plans',LOG:'SyncLog'};
 
 const COLS={
-  trips:    ['ID','Plant','Location','Date','DateEnd','Purpose','Contact','Transport','Status','CreatedAt'],
+  trips:    ['ID','Plant','Location','Date','DateEnd','Purpose','Contact','Transport','Status','Notes','CreatedAt'],
   tasks:    ['ID','Title','Description','Category','DateStart','TimeStart','DateEnd','TimeEnd','Hours','Minutes','Priority','Period','Machine','Plan','TripID','Status','Checklist','ChecklistJson','CreatedAt','UpdatedAt'],
   leave:    ['Date','Type','Note'],
   reports:  ['TripID','SignoffSummary','SignoffResult','SignoffRemarks','SignedAt'],
@@ -117,7 +117,8 @@ function syncAll(p){
   if(p.trips&&p.trips.length){
     writeSheet(s,SN.TRIPS,COLS.trips,p.trips.map(t=>[
       t.id,t.plant,t.location,t.date,t.dateEnd,
-      t.purpose,t.contact,t.transport,t.status,t.createdAt
+      t.purpose,t.contact,t.transport,t.status,
+      t.notes||'',t.createdAt
     ]));r.trips=p.trips.length;
   }
 
