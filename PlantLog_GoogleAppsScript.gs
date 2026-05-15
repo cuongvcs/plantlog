@@ -1,7 +1,15 @@
 /**
- * PlantLog v4 — Google Apps Script Backend
- * DEPLOY: script.google.com → New project → paste → Save
- * Run setupSheets() once → Deploy → Web app → Anyone → copy URL
+ * PlantLog PRO — Google Apps Script Backend
+ * Database: 'PlantLog Pro Database' (separate from old PlantLog Database)
+ *
+ * SETUP STEPS:
+ * 1. Go to script.google.com → New project → name it 'PlantLog Pro Backend'
+ * 2. Paste this entire file → Save (Ctrl+S)
+ * 3. Run setupSheets() once → approve permissions
+ *    → Creates a NEW file 'PlantLog Pro Database' in your Google Drive
+ * 4. Deploy → New deployment → Web app
+ *    Execute as: Me | Who has access: Anyone
+ * 5. Copy the /exec URL → paste into PlantLog Pro → Settings → Sync
  */
 
 const SN={TRIPS:'Trips',TASKS:'Tasks',LEAVE:'Leave',REPORTS:'Reports',
@@ -9,8 +17,8 @@ const SN={TRIPS:'Trips',TASKS:'Tasks',LEAVE:'Leave',REPORTS:'Reports',
   BILLS:'Bills',MACHINES:'Machines',PLANS:'Plans',LOG:'SyncLog'};
 
 const COLS={
-  trips:    ['ID','Plant','Location','Date','DateEnd','Purpose','Contact','Transport','Status','Notes','CreatedAt'],
-  tasks:    ['ID','Title','Description','Category','DateStart','TimeStart','DateEnd','TimeEnd','Hours','Minutes','Priority','Period','Machine','Plan','TripID','Status','Checklist','ChecklistJson','CreatedAt','UpdatedAt'],
+  trips:    ['ID','Plant','Location','Date','DateEnd','Purpose','Contact','Transport','Status','Notes','Flight','CreatedAt'],
+  tasks:    ['ID','Title','Description','Category','DateStart','TimeStart','DateEnd','TimeEnd','Hours','Minutes','Priority','Period','Machine','Plan','TripID','Status','Checklist','ChecklistJson','FlightJson','CreatedAt','UpdatedAt'],
   leave:    ['Date','Type','Note'],
   reports:  ['TripID','SignoffSummary','SignoffResult','SignoffRemarks','SignedAt'],
   checklist:['TripID','ItemID','Name','Result','Note'],
@@ -24,8 +32,8 @@ const COLS={
 };
 
 function db_(){
-  const f=DriveApp.getFilesByName('PlantLog Database');
-  return f.hasNext()?SpreadsheetApp.open(f.next()):SpreadsheetApp.create('PlantLog Database');
+  const f=DriveApp.getFilesByName('PlantLog Pro Database');
+  return f.hasNext()?SpreadsheetApp.open(f.next()):SpreadsheetApp.create('PlantLog Pro Database');
 }
 
 function cellStr(v){
@@ -118,7 +126,7 @@ function syncAll(p){
     writeSheet(s,SN.TRIPS,COLS.trips,p.trips.map(t=>[
       t.id,t.plant,t.location,t.date,t.dateEnd,
       t.purpose,t.contact,t.transport,t.status,
-      t.notes||'',t.createdAt
+      t.notes||'', t.flight||'', t.createdAt
     ]));r.trips=p.trips.length;
   }
 
@@ -128,7 +136,7 @@ function syncAll(p){
       t.dateStart,t.timeStart,t.dateEnd,t.timeEnd,
       t.hours,t.minutes,
       t.priority,t.period,t.machine,t.plan,t.tripId,t.status,
-      t.checklist,t.checklistJson,
+      t.checklist,t.checklistJson, t.flightJson||'',
       t.createdAt,t.updatedAt
     ]));r.tasks=p.tasks.length;
   }
@@ -182,8 +190,33 @@ function setupSheets(){
    ['Bills',COLS.bills],['Machines',COLS.machines],['Plans',COLS.plans],['SyncLog',COLS.log]
   ].forEach(([n,h])=>ensureSheet(s,n,h));
   try{const d=s.getSheetByName('Sheet1');if(d&&s.getSheets().length>1)s.deleteSheet(d);}catch(x){}
-  Logger.log('PlantLog Database ready: '+s.getUrl());
-  return s.getUrl();
+  const url=s.getUrl();
+  Logger.log('✅ PlantLog Pro Database ready!');
+  Logger.log('Spreadsheet URL: '+url);
+  Logger.log('');
+  Logger.log('Next step: Deploy as Web App → copy the /exec URL → paste into PlantLog Pro Settings');
+  return url;
 }
 
 function json_(o){return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);}
+
+/**
+ * Run this function to see your database URL in the Logs
+ */
+function getDatabaseUrl(){
+  const url=db_().getUrl();
+  Logger.log('PlantLog Pro Database: '+url);
+  return url;
+}
+
+/**
+ * Run this to verify the API is working correctly
+ */
+function testAPI(){
+  const s=db_();
+  Logger.log('Database: '+s.getName()+' ('+s.getId()+')');
+  Logger.log('Sheets: '+s.getSheets().map(sh=>sh.getName()).join(', '));
+  Logger.log('Trips: '+readSheet(s,SN.TRIPS,COLS.trips).length+' rows');
+  Logger.log('Tasks: '+readSheet(s,SN.TASKS,COLS.tasks).length+' rows');
+  Logger.log('Bills: '+readSheet(s,SN.BILLS,COLS.bills).length+' rows');
+}
